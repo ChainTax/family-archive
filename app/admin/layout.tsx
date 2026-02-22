@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 
 export const metadata = {
-  title: { default: "Admin", template: "%s | Admin — FamilyArchive" },
+  title: { default: "Admin", template: "%s | Admin — 재린월드" },
 };
 
 export default async function AdminLayout({
@@ -22,7 +22,7 @@ export default async function AdminLayout({
       <aside className="w-56 shrink-0 bg-white border-r border-border-default flex flex-col">
         <div className="px-5 py-4 border-b border-border-default">
           <Link href="/" className="text-base font-bold text-text-primary">
-            FamilyArchive
+            재린월드
           </Link>
           <p className="text-xs text-text-tertiary mt-0.5">{role}</p>
         </div>
@@ -33,10 +33,8 @@ export default async function AdminLayout({
             <>
               <NavItem href="/admin/posts" label="글" />
               <NavItem href="/admin/albums" label="앨범" />
-              <NavItem href="/admin/media" label="미디어 라이브러리" />
-              <NavItem href="/admin/map" label="지도 핀" />
               <NavItem href="/admin/milestones" label="마일스톤" />
-              <NavItem href="/admin/guestbook" label="방명록" />
+              <NavItem href="/admin/map" label="지도 핀" />
             </>
           )}
           {role === "OWNER" && (

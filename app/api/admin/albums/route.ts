@@ -35,6 +35,7 @@ interface CreateAlbumBody {
   visibility?: Visibility;
   coverUrl?: string;
   photos?: PhotoInput[];
+  tags?: string[];
 }
 
 export async function POST(req: Request) {
@@ -49,7 +50,7 @@ export async function POST(req: Request) {
     return Response.json({ error: "요청 파싱 실패" }, { status: 400 });
   }
 
-  const { title, slug, description, dateStart, dateEnd, visibility, coverUrl, photos = [] } = body;
+  const { title, slug, description, dateStart, dateEnd, visibility, coverUrl, photos = [], tags = [] } = body;
 
   if (!title?.trim()) return Response.json({ error: "제목은 필수입니다" }, { status: 400 });
   if (!slug?.trim()) return Response.json({ error: "슬러그는 필수입니다" }, { status: 400 });
@@ -77,6 +78,15 @@ export async function POST(req: Request) {
           caption: p.caption?.trim() || null,
           order: i,
         })),
+      },
+      tags: {
+        connectOrCreate: tags
+          .map((t) => t.trim())
+          .filter(Boolean)
+          .map((name) => ({
+            where: { name },
+            create: { name },
+          })),
       },
     },
   });

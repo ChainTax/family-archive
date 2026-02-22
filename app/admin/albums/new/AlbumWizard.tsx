@@ -15,6 +15,7 @@ export interface BasicInfo {
   dateStart: string;
   dateEnd: string;
   visibility: Visibility;
+  tags: string[];
 }
 
 export interface PhotoItem {
@@ -35,6 +36,7 @@ const defaultBasicInfo: BasicInfo = {
   dateStart: "",
   dateEnd: "",
   visibility: "PRIVATE",
+  tags: [],
 };
 
 export function AlbumWizard() {
@@ -67,6 +69,7 @@ export function AlbumWizard() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...basicInfo,
+          tags: basicInfo.tags,
           coverUrl: photos[coverIndex]?.thumbUrl ?? null,
           photos: photos.map((p, i) => ({
             url: p.url,

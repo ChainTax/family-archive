@@ -1,6 +1,7 @@
 "use client";
 
-import { Input, Button } from "@/components/ui";
+import { useState } from "react";
+import { Input, Button, Chip } from "@/components/ui";
 import type { BasicInfo, Visibility } from "./AlbumWizard";
 
 interface Props {
@@ -29,6 +30,8 @@ const VISIBILITY_OPTIONS: { value: Visibility; label: string; desc: string }[] =
 ];
 
 export function BasicInfoStep({ data, onChange, onNext }: Props) {
+  const [tagInput, setTagInput] = useState("");
+
   const set = <K extends keyof BasicInfo>(k: K, v: BasicInfo[K]) =>
     onChange({ ...data, [k]: v });
 
@@ -38,6 +41,24 @@ export function BasicInfoStep({ data, onChange, onNext }: Props) {
       title,
       slug: title ? toSlug(title) : "",
     });
+  };
+
+  const handleTagKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if ((e.key === "Enter" || e.key === ",") && tagInput.trim()) {
+      e.preventDefault();
+      const tag = tagInput.trim().replace(/,+$/, "");
+      if (tag && !data.tags.includes(tag)) {
+        onChange({ ...data, tags: [...data.tags, tag] });
+      }
+      setTagInput("");
+    }
+    if (e.key === "Backspace" && !tagInput && data.tags.length > 0) {
+      onChange({ ...data, tags: data.tags.slice(0, -1) });
+    }
+  };
+
+  const removeTag = (tag: string) => {
+    onChange({ ...data, tags: data.tags.filter((t) => t !== tag) });
   };
 
   const canProceed = data.title.trim().length > 0;
@@ -89,6 +110,25 @@ export function BasicInfoStep({ data, onChange, onNext }: Props) {
           onChange={(e) => set("dateEnd", e.target.value)}
           min={data.dateStart || undefined}
         />
+      </div>
+
+      {/* 태그 */}
+      <div className="flex flex-col gap-1.5">
+        <label className="text-sm font-medium text-text-primary">태그 (선택)</label>
+        <div className="flex flex-wrap gap-1.5 min-h-[42px] px-3 py-2 rounded-[10px] border border-border-default bg-white focus-within:border-brand transition-colors">
+          {data.tags.map((tag) => (
+            <Chip key={tag} onDismiss={() => removeTag(tag)}>{tag}</Chip>
+          ))}
+          <input
+            type="text"
+            value={tagInput}
+            onChange={(e) => setTagInput(e.target.value)}
+            onKeyDown={handleTagKeyDown}
+            placeholder={data.tags.length === 0 ? "태그 입력 후 Enter 또는 , " : ""}
+            className="flex-1 min-w-[120px] text-sm text-text-primary placeholder:text-text-tertiary focus:outline-none bg-transparent"
+          />
+        </div>
+        <p className="text-xs text-text-tertiary">Enter 또는 쉼표(,)로 태그를 추가합니다. Backspace로 마지막 태그를 삭제합니다.</p>
       </div>
 
       {/* 공개 범위 */}
