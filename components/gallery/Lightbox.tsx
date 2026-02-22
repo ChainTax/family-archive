@@ -56,9 +56,11 @@ export function Lightbox({ photos, initialIndex, onClose }: Props) {
   const scaleRef = useRef(scale);
   const panXRef = useRef(panX);
   const panYRef = useRef(panY);
-  useEffect(() => { scaleRef.current = scale; }, [scale]);
-  useEffect(() => { panXRef.current = panX; }, [panX]);
-  useEffect(() => { panYRef.current = panY; }, [panY]);
+  useEffect(() => {
+    scaleRef.current = scale;
+    panXRef.current = panX;
+    panYRef.current = panY;
+  }, [scale, panX, panY]);
 
   // 제스처 refs (렌더링 불필요 — ref로 관리)
   const gesture = useRef<Gesture>("idle");

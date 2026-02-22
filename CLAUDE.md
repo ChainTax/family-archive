@@ -176,6 +176,8 @@ ssl: connectionString.includes("localhost") ? undefined : { rejectUnauthorized: 
 - **Step 12**: Vercel 배포 + 배포 후 수정 (아래 상세 참고)
 - **Step 13**: UI 폴리싱 + 마일스톤 공개 페이지 (아래 상세 참고)
 - **Step 14**: 성장기록 기능 + 로고 추가 (아래 상세 참고)
+- **Step 15**: 다크모드 + 홈 UX 개편 + 앨범 뷰어 고급화 (아래 상세 참고)
+- **Step 16**: 최종 감사 — 디렉토리·코드·보안 점검 및 수정 (아래 상세 참고)
 
 ### Step 12 상세 — 배포 및 배포 후 수정
 
@@ -299,6 +301,115 @@ ssl: connectionString.includes("localhost") ? undefined : { rejectUnauthorized: 
 - 공개 헤더 "재린월드" 왼쪽에 `w-7 h-7` 크기로 표시 (`app/(public)/layout.tsx`)
 - 관리자 사이드바 "재린월드" 왼쪽에 `w-5 h-5` 크기로 표시 (`app/admin/layout.tsx`)
 
+### Step 15 상세 — 다크모드 + 홈 UX 개편 + 앨범 뷰어 고급화
+
+**다크모드 (`app/globals.css`, `tailwind.config.ts`, `components/ui/ThemeToggle.tsx`)**
+- Claude 다크 팔레트 기반 따뜻한 다크 테마 (BG `#1C1A17`, Text `#EDE9E3`)
+- CSS 변수 RGB 채널 포맷 (`--color-brand-rgb: 204 122 74`) → Tailwind opacity 수식어 지원
+- `[data-theme="dark"]` selector 방식 (`tailwind.config.ts: darkMode: ['selector', ...]`)
+- FOUC 방지: `app/layout.tsx` `<head>`에 인라인 스크립트로 초기 테마 즉시 적용
+- `[data-theme="dark"] .bg-white` 전역 오버라이드 (`!important`)
+- ThemeToggle 컴포넌트 (`components/ui/ThemeToggle.tsx`): sun/moon 아이콘, localStorage 저장
+- **토글 위치: 홈페이지 우상단 고정만 유지** (공개 네비·어드민 사이드바에서 제거 — 모바일 오버플로우 방지)
+
+**홈페이지 UX 개편 (`app/page.tsx`)**
+- 블로그 카드: 앨범과 동일 포맷 (grid-cols-2 md:grid-cols-4, aspect-square, 하단 bg-bg-secondary)
+- 발췌문(excerpt) 제거, 사진 장수 표시 제거
+- 헤더 제거 (ThemeToggle 우상단 고정으로 대체)
+
+**블로그 목록 모바일 수정 (`app/(public)/blog/page.tsx`)**
+- 커버 이미지: `hidden sm:block` → 모바일에서도 풀 너비 표시
+- 레이아웃: `flex → flex flex-col sm:flex-row`
+
+**Admin 대시보드 수정 (`app/admin/page.tsx`)**
+- "미승인 방명록" 통계 제거 → "성장기록 수" (`prisma.growthRecord.count()`)로 교체
+
+**글 에디터 기능 추가 (`components/editor/RichEditor.tsx`)**
+- 폰트 선택 드롭다운: 기본 / 명조(Georgia) / 고딕(Apple SD Gothic Neo) / 타자기(Courier New)
+- 이미지 삽입: `/api/admin/upload` POST로 업로드, 글 너비에 맞게 자동 조절
+- `@tiptap/extension-image`, `@tiptap/extension-text-style`, `@tiptap/extension-font-family` 추가
+
+**revalidatePath 일괄 추가 (ISR 캐시 즉시 반영)**
+- `app/api/admin/posts/route.ts` + `[id]/route.ts`: PUBLISHED 글 변경 시 `"/"`, `"/blog"`, `"/blog/[slug]"` 무효화
+- `app/api/admin/milestones/route.ts` + `[id]/route.ts`: PUBLIC 마일스톤 변경 시 `"/"`, `"/milestones"` 무효화
+- `app/api/admin/albums/route.ts` + `[id]/route.ts`: PUBLIC 앨범 변경 시 `"/"`, `"/albums"`, `"/albums/[slug]"` 무효화
+
+**로고 파일 교체 및 크롭**
+- `public/logo.png`: 새 투명 배경 PNG로 교체 (677×369 → Sharp로 좌측 여백 제거 → 327×332px)
+- 모든 img src에 `?v=3` 캐시버스팅 적용
+
+**앨범 뷰어 고급화 — 1단계 (`components/gallery/Lightbox.tsx`)**
+- 진입/퇴장: 배경 + 이미지 페이드 (opacity 0→1, 0.25s)
+- 사진 전환: scale(0.96)→scale(1) + opacity 페이드 (0.28s/0.32s cubic-bezier)
+- 터치 드래그 실시간 피드백: 손가락에 이미지 딱 붙음, 양 끝 rubber-band(20%) 저항
+- 캡션 펼치기/접기: 52자 초과 시 line-clamp-1 + "더 보기 ↓" 버튼
+- 썸네일 스트립: 하단 수평 스크롤, 활성 항목 ring-2+scale-110, 이동 시 자동 scroll-into-view
+- 프리로드 ±1 → ±2장 확장
+- `.lb-thumb-strip::-webkit-scrollbar { display: none }` in globals.css
+
+**앨범 뷰어 고급화 — 2·3단계 (줌·스와이프·팬)**
+- **제스처 상태머신**: idle → swipe / pan / pinch (절대 충돌 없음)
+- **스와이프**: 8px 수평 감지, 세로 12px 우선 시 무시, 22% 임계값, rubber-band 저항
+- **핀치줌(모바일)**: 두 손가락 1~5배, 1.08배 미만 스냅리셋, 한 손가락 떼면 팬 전환
+- **더블탭(모바일)**: 300ms/40px 이내 → 2.5배 클릭 위치 기준 확대 or 리셋
+- **더블클릭(데스크톱)**: 클릭 지점 기준 2.5배 확대 (`pan = clickX * (1-newScale)`) or 리셋
+- **휠줌(데스크톱)**: native listener (passive:false), 커서 위치 기준 ×1.12 스텝
+  - 버그 수정: `useEffect(fn, [])` → `[mounted, clampPan]` (mounted=false 시 ref=null 문제)
+- **팬(pan)**: 터치 단일 손가락 + 마우스 드래그 모두 지원, naturalWidth 기반 경계 클램프
+  - 마우스 팬: `document.addEventListener("mousemove/mouseup")` 전역 리스너 (요소 밖 이탈 대응)
+  - stale closure 방지: `scaleRef`, `panXRef`, `panYRef` mirror refs
+- 줌 상태 UI: 좌우 버튼·썸네일·캡션 숨김, "원래 크기" 버튼 표시, 커서 grab/grabbing
+- `touch-action: none` on imageArea (브라우저 기본 핀치줌·스크롤 차단)
+
+**관리자 비밀번호 변경 방법**
+```bash
+SEED_ADMIN_PASSWORD="새비밀번호" npx tsx prisma/seed.ts
+```
+(upsert로 기존 계정 비밀번호 즉시 교체, bcrypt hash 12라운드)
+
+---
+
+### Step 16 상세 — 최종 감사 (디렉토리·코드·보안)
+
+에이전트 팀 3팀 병렬 감사 + 수정 적용. 기능 변경 없음.
+
+**감사 결과 요약**
+
+| 영역 | 결과 |
+|---|---|
+| 디렉토리 구조 | ✅ 전 항목 이상 없음 (Next.js 15 컨벤션 완벽 준수) |
+| `.env.local` git 이력 | ✅ 커밋된 적 없음 (안전) |
+| SQL Injection | ✅ Prisma ORM, raw query 미사용 |
+| CSRF | ✅ NextAuth v5 JWT 자동 보호 |
+| 파일 업로드 | ✅ MIME·크기 검증, UUID 파일명, path traversal 방어 |
+| EXIF/GPS | ✅ Sharp WebP 변환 시 메타데이터 완전 제거 |
+| Audit Log | ✅ 모든 민감 액션 로깅됨 |
+| Rate Limiting | ⏸️ 미구현 (P1 — Upstash 연동 필요, 향후 과제) |
+
+**적용된 수정 사항**
+
+1. **XSS 방어 (HIGH)** — `sanitize-html` 도입
+   - `lib/sanitize.ts` 생성 — TipTap 출력 화이트리스트 정제 (script/iframe/on* 차단)
+   - `app/(public)/blog/[slug]/page.tsx` — `dangerouslySetInnerHTML` 전 `sanitizePostContent()` 적용
+   - 외부 링크 자동 `rel="noopener noreferrer"` + `target="_blank"` 추가
+
+2. **CSP 헤더 추가 (LOW→완료)** — `next.config.ts`
+   - `Content-Security-Policy` 헤더 추가
+   - `object-src 'none'` (플러그인 완전 차단)
+   - `frame-ancestors 'none'` (X-Frame-Options와 이중 보호)
+   - Google Fonts, R2 이미지 허용 범위 명시
+
+3. **DB 쿼리 최적화** — API GET 라우트
+   - `app/api/admin/posts/route.ts` — `include: { tags: true }` → 명시적 `select` (불필요 필드 제거)
+   - `app/api/admin/albums/route.ts` — `include: { _count }` → 명시적 `select` (불필요 필드 제거)
+
+4. **Lightbox useEffect 최적화** — `components/gallery/Lightbox.tsx`
+   - `scaleRef`, `panXRef`, `panYRef` 동기화 3개 별도 effect → 1개 통합 effect
+
+**미적용 항목 (향후 과제)**
+- Rate Limiting: Upstash Redis 연동 필요 (로그인/방명록/업로드 API)
+- Auth 헬퍼 공통화: 13개+ 라우트 수정 필요 (기능 검증 필요로 보류)
+
 ---
 
 ## 주요 파일 위치
@@ -315,6 +426,7 @@ lib/prisma.ts                       PrismaClient (PrismaPg 어댑터 + SSL)
 lib/audit.ts                        AuditLog 헬퍼 (로컬 JsonValue 타입)
 lib/media.ts                        Sharp 이미지 처리 (EXIF 제거+WebP+썸네일)
 lib/storage.ts                      스토리지 어댑터 (local | s3 | r2)
+lib/sanitize.ts                     HTML 정제 (sanitize-html, XSS 방어)
 prisma/seed.ts                      관리자 계정 초기 시드
 
 auth.config.ts                      Edge-safe 공통 설정 (JWT callbacks, pages)

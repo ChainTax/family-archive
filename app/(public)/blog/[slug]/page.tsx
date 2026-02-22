@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
 import { Badge } from "@/components/ui";
+import { sanitizePostContent } from "@/lib/sanitize";
 import type { Metadata } from "next";
 
 export const dynamic = "force-dynamic";
@@ -150,10 +151,10 @@ export default async function PostPage({ params }: Props) {
       {/* 구분선 */}
       <hr className="border-border-default mb-8" />
 
-      {/* 본문 (TipTap HTML) */}
+      {/* 본문 (TipTap HTML — sanitize-html로 XSS 정제 후 렌더링) */}
       <div
         className="prose-editor"
-        dangerouslySetInnerHTML={{ __html: post.content }}
+        dangerouslySetInnerHTML={{ __html: sanitizePostContent(post.content) }}
       />
     </article>
   );

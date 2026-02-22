@@ -79,6 +79,26 @@ const nextConfig: NextConfig = {
             key: "Permissions-Policy",
             value: "camera=(), microphone=(), geolocation=()",
           },
+          {
+            key: "Content-Security-Policy",
+            value: [
+              "default-src 'self'",
+              // Next.js hydration 인라인 스크립트 허용
+              "script-src 'self' 'unsafe-inline'",
+              // Tailwind 인라인 스타일 + Google Fonts
+              "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+              // Google Fonts 폰트 파일
+              "font-src 'self' https://fonts.gstatic.com",
+              // R2/S3 이미지, data URI (블러 플레이스홀더)
+              "img-src 'self' data: blob: https:",
+              // API 연결
+              "connect-src 'self'",
+              // 플러그인(Flash 등) 완전 차단
+              "object-src 'none'",
+              // iframe 완전 차단
+              "frame-ancestors 'none'",
+            ].join("; "),
+          },
         ],
       },
       {

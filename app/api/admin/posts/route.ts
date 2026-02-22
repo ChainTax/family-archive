@@ -13,7 +13,17 @@ export async function GET() {
 
   const posts = await prisma.post.findMany({
     orderBy: { createdAt: "desc" },
-    include: { tags: true },
+    select: {
+      id: true,
+      title: true,
+      slug: true,
+      status: true,
+      visibility: true,
+      createdAt: true,
+      publishedAt: true,
+      series: true,
+      tags: { select: { id: true, name: true } },
+    },
   });
 
   return Response.json({ posts });
