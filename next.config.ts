@@ -1,10 +1,6 @@
 import type { NextConfig } from "next";
-import path from "path";
 
 const nextConfig: NextConfig = {
-  // 워크스페이스 루트 명시 (lockfile 경고 해결)
-  outputFileTracingRoot: path.join(__dirname, "../../"),
-
   images: {
     formats: ["image/avif", "image/webp"],
     remotePatterns: [],
