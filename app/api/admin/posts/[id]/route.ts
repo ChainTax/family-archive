@@ -61,7 +61,7 @@ export async function PATCH(req: Request, { params }: Ctx) {
         prisma.tag.upsert({ where: { name }, create: { name }, update: {} })
       )
     );
-    tagConnections = upserted.map((t) => ({ id: t.id }));
+    tagConnections = upserted.map((t: { id: string }) => ({ id: t.id }));
   }
 
   const post = await prisma.post.update({

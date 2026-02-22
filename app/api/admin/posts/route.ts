@@ -75,7 +75,7 @@ export async function POST(req: Request) {
       publishedAt: status === "PUBLISHED" ? new Date() : null,
       scheduledAt: scheduledAt ? new Date(scheduledAt) : null,
       series: series?.trim() || null,
-      tags: { connect: tagConnections.map((t) => ({ id: t.id })) },
+      tags: { connect: tagConnections.map((t: { id: string }) => ({ id: t.id })) },
     },
   });
 

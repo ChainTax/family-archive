@@ -52,7 +52,7 @@ export async function GET() {
         ? escapeXml(post.excerpt)
         : `${escapeXml(appName)} 블로그 포스트`;
       const categories = post.tags
-        .map((t) => `<category>${escapeXml(t.name)}</category>`)
+        .map((t: { name: string }) => `<category>${escapeXml(t.name)}</category>`)
         .join("");
 
       return `
