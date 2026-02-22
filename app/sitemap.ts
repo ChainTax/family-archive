@@ -26,7 +26,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       select: { slug: true, updatedAt: true },
       orderBy: { publishedAt: "desc" },
     });
-    postRoutes = posts.map((post) => ({
+    postRoutes = posts.map((post: { slug: string; updatedAt: Date }) => ({
       url: `${appUrl}/blog/${post.slug}`,
       lastModified: post.updatedAt,
       changeFrequency: "monthly" as const,
@@ -39,7 +39,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       select: { slug: true, updatedAt: true },
       orderBy: { createdAt: "desc" },
     });
-    albumRoutes = albums.map((album) => ({
+    albumRoutes = albums.map((album: { slug: string; updatedAt: Date }) => ({
       url: `${appUrl}/albums/${album.slug}`,
       lastModified: album.updatedAt,
       changeFrequency: "monthly" as const,
