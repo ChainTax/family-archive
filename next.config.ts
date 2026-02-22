@@ -19,18 +19,44 @@ const nextConfig: NextConfig = {
     unoptimized: process.env.STORAGE_PROVIDER === "local",
   },
 
-  // 추가 안전망: 모든 플랫폼 Prisma 엔진 바이너리 + 빌드 툴 추적 제외
+  // Vercel 250MB 제한 대응: 런타임 불필요 파일 추적 제외
   outputFileTracingExcludes: {
     "*": [
-      "node_modules/.prisma/client/libquery_engine*",
+      // ★ webpack 빌드 캐시 — 절대 런타임에 불필요 (~200MB+ 주범)
+      ".next/cache/**",
+
+      // @prisma/client/runtime — PostgreSQL 외 DB WASM 파일 (~56MB)
+      "node_modules/@prisma/client/runtime/*mysql*",
+      "node_modules/@prisma/client/runtime/*sqlite*",
+      "node_modules/@prisma/client/runtime/*sqlserver*",
+      "node_modules/@prisma/client/runtime/*cockroachdb*",
+
+      // Prisma 엔진 바이너리 (~23MB)
       "node_modules/@prisma/engines/**",
+      "node_modules/.prisma/client/libquery_engine*",
       "node_modules/prisma/libquery_engine*",
-      "node_modules/sharp/**",
+
+      // Prisma Studio GUI — 런타임 불필요 (~26MB)
+      "node_modules/@prisma/studio-core/**",
+
+      // Prisma CLI 전용 — 런타임 불필요
+      "node_modules/@prisma/fetch-engine/**",
+      "node_modules/@prisma/get-platform/**",
+      "node_modules/prisma/build/**",
+
+      // 플랫폼별 네이티브 바이너리 (macOS/Windows 등 비Linux)
+      "node_modules/@img/sharp-libvips-darwin*/**",
+      "node_modules/@img/sharp-darwin*/**",
+      "node_modules/@img/sharp-win32*/**",
+
+      // 빌드 툴 — 런타임 불필요
       "node_modules/@swc/core*",
+      "node_modules/@esbuild/**",
       "node_modules/esbuild/**",
       "node_modules/webpack/**",
       "node_modules/rollup/**",
       "node_modules/terser/**",
+      "node_modules/typescript/**",
     ],
   },
 
