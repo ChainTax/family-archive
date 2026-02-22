@@ -15,19 +15,98 @@ interface Props {
   onClose: () => void;
 }
 
+// 두 터치 포인트 간 거리
+function pinchDist(touches: React.TouchList) {
+  const dx = touches[1].clientX - touches[0].clientX;
+  const dy = touches[1].clientY - touches[0].clientY;
+  return Math.hypot(dx, dy);
+}
+
+// 제스처 상태머신
+type Gesture = "idle" | "swipe" | "pan" | "pinch";
+
+const MIN_SCALE = 1;
+const MAX_SCALE = 5;
+const SNAP_THRESHOLD = 1.08; // 이 미만이면 scale=1로 스냅
+const SWIPE_THRESHOLD_RATIO = 0.22; // 화면 너비의 22%
+const RUBBER_BAND = 0.2; // 양 끝 저항
+
 export function Lightbox({ photos, initialIndex, onClose }: Props) {
   const [index, setIndex] = useState(initialIndex);
   const [imgLoaded, setImgLoaded] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [visible, setVisible] = useState(false);
   const [captionExpanded, setCaptionExpanded] = useState(false);
+
+  // 스와이프 드래그 오프셋 (픽셀)
   const [dragOffset, setDragOffset] = useState(0);
 
-  const touchStartX = useRef(0);
-  const touchStartY = useRef(0);
-  const isDraggingH = useRef(false);
+  // 줌 + 팬
+  const [scale, setScale] = useState(1);
+  const [panX, setPanX] = useState(0);
+  const [panY, setPanY] = useState(0);
+
+  // DOM refs
+  const imgRef = useRef<HTMLImageElement>(null);
+  const imageAreaRef = useRef<HTMLDivElement>(null);
   const thumbStripRef = useRef<HTMLDivElement>(null);
   const closeBtnRef = useRef<HTMLButtonElement>(null);
+
+  // 제스처 refs (렌더링 불필요 — ref로 관리)
+  const gesture = useRef<Gesture>("idle");
+  const isGesturing = useRef(false); // transition 억제용
+
+  // 스와이프
+  const touchStartX = useRef(0);
+  const touchStartY = useRef(0);
+
+  // 팬 시작 스냅샷
+  const panSnap = useRef({ touchX: 0, touchY: 0, panX: 0, panY: 0 });
+
+  // 핀치 시작 스냅샷
+  const pinchSnap = useRef({ dist: 0, scale: 1 });
+
+  // 더블탭
+  const lastTap = useRef({ time: 0, x: 0, y: 0 });
+
+  // ─── 팬 클램프 ────────────────────────────────────────────────
+  // naturalWidth/Height 기반으로 표시 크기를 계산하여 경계 내로 제한
+  const clampPan = useCallback(
+    (x: number, y: number, s: number): { x: number; y: number } => {
+      const img = imgRef.current;
+      const area = imageAreaRef.current;
+      if (!img || !area) return { x, y };
+
+      const containerW = area.clientWidth;
+      const containerH = area.clientHeight;
+      const natW = img.naturalWidth || 1;
+      const natH = img.naturalHeight || 1;
+      const imgAspect = natW / natH;
+      const areaAspect = containerW / containerH;
+
+      // contain 모드로 표시되는 크기
+      const displayW =
+        imgAspect > areaAspect ? containerW : containerH * imgAspect;
+      const displayH =
+        imgAspect > areaAspect ? containerW / imgAspect : containerH;
+
+      const maxX = Math.max(0, (displayW * s - containerW) / 2);
+      const maxY = Math.max(0, (displayH * s - containerH) / 2);
+
+      return {
+        x: Math.max(-maxX, Math.min(maxX, x)),
+        y: Math.max(-maxY, Math.min(maxY, y)),
+      };
+    },
+    []
+  );
+
+  // ─── 줌 리셋 ─────────────────────────────────────────────────
+  const resetZoom = useCallback(() => {
+    setScale(1);
+    setPanX(0);
+    setPanY(0);
+  }, []);
 
   // ─── 마운트 + 진입 애니메이션 ────────────────────────────────
   useEffect(() => {
@@ -55,15 +134,18 @@ export function Lightbox({ photos, initialIndex, onClose }: Props) {
     };
   }, []);
 
-  // ─── 썸네일 스트립 활성 항목 자동 스크롤 ────────────────────
+  // ─── 썸네일 스트립 자동 스크롤 ──────────────────────────────
   useEffect(() => {
     const strip = thumbStripRef.current;
     if (!strip) return;
-    const thumb = strip.children[index] as HTMLElement | undefined;
-    thumb?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+    (strip.children[index] as HTMLElement | undefined)?.scrollIntoView({
+      behavior: "smooth",
+      block: "nearest",
+      inline: "center",
+    });
   }, [index]);
 
-  // ─── 인접 이미지 프리로드 (±2장) ─────────────────────────────
+  // ─── 인접 이미지 프리로드 (±2) ───────────────────────────────
   useEffect(() => {
     [-2, -1, 1, 2]
       .map((d) => index + d)
@@ -74,18 +156,44 @@ export function Lightbox({ photos, initialIndex, onClose }: Props) {
       });
   }, [index, photos]);
 
+  // ─── 휠 줌 (데스크톱) — passive:false 필요 → native listener ─
+  useEffect(() => {
+    const el = imageAreaRef.current;
+    if (!el) return;
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      const factor = e.deltaY < 0 ? 1.12 : 1 / 1.12;
+      setScale((s) => {
+        const next = Math.max(MIN_SCALE, Math.min(MAX_SCALE, s * factor));
+        if (next < SNAP_THRESHOLD) {
+          setPanX(0);
+          setPanY(0);
+          return MIN_SCALE;
+        }
+        return next;
+      });
+    };
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => el.removeEventListener("wheel", onWheel);
+  }, []);
+
   // ─── 닫기 (페이드아웃 후 unmount) ───────────────────────────
   const handleClose = useCallback(() => {
     setVisible(false);
     setTimeout(onClose, 250);
   }, [onClose]);
 
-  // ─── 이동 ────────────────────────────────────────────────────
-  const navigate = useCallback((next: number) => {
-    setIndex(next);
-    setImgLoaded(false);
-    setCaptionExpanded(false);
-  }, []);
+  // ─── 이동 (줌 리셋 포함) ─────────────────────────────────────
+  const navigate = useCallback(
+    (next: number) => {
+      setIndex(next);
+      setImgLoaded(false);
+      setCaptionExpanded(false);
+      resetZoom();
+      setDragOffset(0);
+    },
+    [resetZoom]
+  );
 
   const goPrev = useCallback(() => {
     if (index > 0) navigate(index - 1);
@@ -98,79 +206,231 @@ export function Lightbox({ photos, initialIndex, onClose }: Props) {
   // ─── 키보드 ──────────────────────────────────────────────────
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "ArrowLeft") goPrev();
-      else if (e.key === "ArrowRight") goNext();
-      else if (e.key === "Escape") handleClose();
+      if (e.key === "Escape") handleClose();
+      else if (e.key === "ArrowLeft" && scale === MIN_SCALE) goPrev();
+      else if (e.key === "ArrowRight" && scale === MIN_SCALE) goNext();
+      else if (e.key === "0" && scale > MIN_SCALE) resetZoom();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [goPrev, goNext, handleClose]);
+  }, [goPrev, goNext, handleClose, scale, resetZoom]);
 
-  // ─── 터치 스와이프 (실시간 드래그 피드백) ────────────────────
-  const handleTouchStart = (e: React.TouchEvent) => {
-    touchStartX.current = e.touches[0].clientX;
-    touchStartY.current = e.touches[0].clientY;
-    isDraggingH.current = false;
-  };
-
-  const handleTouchMove = (e: React.TouchEvent) => {
-    const dx = e.touches[0].clientX - touchStartX.current;
-    const dy = e.touches[0].clientY - touchStartY.current;
-
-    if (!isDraggingH.current) {
-      if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 8) {
-        isDraggingH.current = true;
-      } else if (Math.abs(dy) > 12) {
-        return; // 수직 스크롤 — 무시
+  // ─── 더블클릭 줌 (데스크톱) ─────────────────────────────────
+  const handleDoubleClick = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      if (scale > MIN_SCALE) {
+        resetZoom();
+      } else {
+        setScale(2.5);
       }
-    }
+    },
+    [scale, resetZoom]
+  );
 
-    if (isDraggingH.current) {
-      // 양 끝에서 고무줄 저항감
-      const atEdge =
-        (dx > 0 && index === 0) || (dx < 0 && index === photos.length - 1);
-      const resistance = atEdge ? 0.2 : 1;
-      const maxPull = window.innerWidth * 0.45;
-      setDragOffset(
-        Math.max(-maxPull, Math.min(maxPull, dx * resistance))
-      );
-    }
-  };
+  // ─── 터치 시작 ───────────────────────────────────────────────
+  const handleTouchStart = useCallback(
+    (e: React.TouchEvent) => {
+      isGesturing.current = true;
 
-  const handleTouchEnd = (e: React.TouchEvent) => {
-    const dx = e.changedTouches[0].clientX - touchStartX.current;
-    setDragOffset(0); // 스냅백 (transition이 처리)
+      // 두 손가락 → 핀치 시작
+      if (e.touches.length === 2) {
+        gesture.current = "pinch";
+        setDragOffset(0);
+        pinchSnap.current = { dist: pinchDist(e.touches), scale };
+        return;
+      }
 
-    if (isDraggingH.current) {
-      const threshold = window.innerWidth * 0.22;
-      if (dx < -threshold) goNext();
-      else if (dx > threshold) goPrev();
-    }
-    isDraggingH.current = false;
-  };
+      const touch = e.touches[0];
 
-  // ─── 이미지 스타일 ───────────────────────────────────────────
-  // 드래그 중: translateX (transition 없음 — 손가락에 딱 붙어야 함)
-  // 드래그 후 스냅백: translateX(0) with transition (부드러운 복귀)
-  // 새 사진 로딩: scale(0.96) opacity(0) → scale(1) opacity(1)
-  const imgStyle: React.CSSProperties =
-    dragOffset !== 0
-      ? {
-          transform: `translateX(${dragOffset}px)`,
-          transition: "none",
-          opacity: imgLoaded ? 1 : 0,
+      // 더블탭 감지
+      const now = Date.now();
+      const dt = now - lastTap.current.time;
+      const dx = Math.abs(touch.clientX - lastTap.current.x);
+      const dy = Math.abs(touch.clientY - lastTap.current.y);
+      if (dt < 300 && dx < 40 && dy < 40) {
+        lastTap.current.time = 0;
+        isGesturing.current = false;
+        if (scale > MIN_SCALE) {
+          resetZoom();
+        } else {
+          setScale(2.5);
         }
-      : {
-          transform: imgLoaded ? "scale(1)" : "scale(0.96)",
-          opacity: imgLoaded ? 1 : 0,
-          transition:
-            "opacity 0.28s ease, transform 0.32s cubic-bezier(0.25,0.46,0.45,0.94)",
-        };
+        return;
+      }
+      lastTap.current = { time: now, x: touch.clientX, y: touch.clientY };
 
+      touchStartX.current = touch.clientX;
+      touchStartY.current = touch.clientY;
+
+      if (scale > MIN_SCALE) {
+        // 줌 상태 → 팬 모드
+        gesture.current = "pan";
+        panSnap.current = {
+          touchX: touch.clientX,
+          touchY: touch.clientY,
+          panX,
+          panY,
+        };
+      } else {
+        // 일반 상태 → 방향 결정 대기
+        gesture.current = "idle";
+      }
+    },
+    [scale, panX, panY, resetZoom]
+  );
+
+  // ─── 터치 이동 ───────────────────────────────────────────────
+  const handleTouchMove = useCallback(
+    (e: React.TouchEvent) => {
+      // 두 번째 손가락이 추가됐으면 핀치로 전환
+      if (e.touches.length === 2 && gesture.current !== "pinch") {
+        gesture.current = "pinch";
+        setDragOffset(0);
+        pinchSnap.current = { dist: pinchDist(e.touches), scale };
+        return;
+      }
+
+      // 핀치 처리
+      if (gesture.current === "pinch" && e.touches.length === 2) {
+        const ratio = pinchDist(e.touches) / pinchSnap.current.dist;
+        const next = Math.max(
+          MIN_SCALE,
+          Math.min(MAX_SCALE, pinchSnap.current.scale * ratio)
+        );
+        setScale(next);
+        if (next < SNAP_THRESHOLD) {
+          setPanX(0);
+          setPanY(0);
+        }
+        return;
+      }
+
+      if (e.touches.length !== 1) return;
+      const touch = e.touches[0];
+
+      // 팬 처리
+      if (gesture.current === "pan") {
+        const dx = touch.clientX - panSnap.current.touchX;
+        const dy = touch.clientY - panSnap.current.touchY;
+        const clamped = clampPan(
+          panSnap.current.panX + dx,
+          panSnap.current.panY + dy,
+          scale
+        );
+        setPanX(clamped.x);
+        setPanY(clamped.y);
+        return;
+      }
+
+      // idle → 방향 결정
+      const dx = touch.clientX - touchStartX.current;
+      const dy = touch.clientY - touchStartY.current;
+
+      if (gesture.current === "idle") {
+        if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 8) {
+          gesture.current = "swipe";
+        } else if (Math.abs(dy) > 12) {
+          gesture.current = "idle"; // 세로 스크롤 — 무시
+          return;
+        } else {
+          return; // 아직 방향 미확정
+        }
+      }
+
+      // 스와이프 드래그
+      if (gesture.current === "swipe") {
+        const atEdge =
+          (dx > 0 && index === 0) ||
+          (dx < 0 && index === photos.length - 1);
+        const r = atEdge ? RUBBER_BAND : 1;
+        const maxPull = window.innerWidth * 0.45;
+        setDragOffset(Math.max(-maxPull, Math.min(maxPull, dx * r)));
+      }
+    },
+    [scale, index, photos.length, clampPan]
+  );
+
+  // ─── 터치 종료 ───────────────────────────────────────────────
+  const handleTouchEnd = useCallback(
+    (e: React.TouchEvent) => {
+      // 핀치 중 한 손가락을 떼면 → 팬으로 전환
+      if (e.touches.length === 1 && gesture.current === "pinch") {
+        const touch = e.touches[0];
+        // 1배 근처면 그냥 리셋
+        if (scale < SNAP_THRESHOLD) {
+          resetZoom();
+          gesture.current = "idle";
+          isGesturing.current = false;
+        } else {
+          gesture.current = "pan";
+          panSnap.current = {
+            touchX: touch.clientX,
+            touchY: touch.clientY,
+            panX,
+            panY,
+          };
+        }
+        return;
+      }
+
+      // 핀치 완전 종료 (두 손가락 모두 떼기)
+      if (gesture.current === "pinch") {
+        if (scale < SNAP_THRESHOLD) resetZoom();
+        gesture.current = "idle";
+        isGesturing.current = false;
+        return;
+      }
+
+      // 스와이프 종료 → 이동 or 스냅백
+      if (gesture.current === "swipe") {
+        const dx = e.changedTouches[0].clientX - touchStartX.current;
+        const threshold = window.innerWidth * SWIPE_THRESHOLD_RATIO;
+        setDragOffset(0); // CSS transition이 스냅백 처리
+        if (dx < -threshold) goNext();
+        else if (dx > threshold) goPrev();
+      } else {
+        setDragOffset(0);
+      }
+
+      gesture.current = "idle";
+      isGesturing.current = false;
+    },
+    [panX, panY, scale, goNext, goPrev, resetZoom]
+  );
+
+  // ─── 파생 값 ─────────────────────────────────────────────────
+  const isZoomed = scale > MIN_SCALE;
   const photo = photos[index];
   const caption = photo.caption;
   const CAPTION_THRESHOLD = 52;
   const captionIsLong = !!caption && caption.length > CAPTION_THRESHOLD;
+
+  // ─── 이미지 transform + transition ──────────────────────────
+  // 줌 중: translate + scale / 스와이프: translateX / 로딩: scale(0.96)→scale(1)
+  const imgTransform = isZoomed
+    ? `translate(${panX}px, ${panY}px) scale(${scale})`
+    : dragOffset !== 0
+    ? `translateX(${dragOffset}px)`
+    : imgLoaded
+    ? "scale(1)"
+    : "scale(0.96)";
+
+  // 제스처 중에는 transition 없음 (즉각 반응), 이후엔 스냅백·페이드 transition
+  const imgTransition =
+    isGesturing.current || dragOffset !== 0
+      ? "none"
+      : "opacity 0.28s ease, transform 0.32s cubic-bezier(0.25,0.46,0.45,0.94)";
+
+  const imgStyle: React.CSSProperties = {
+    transform: imgTransform,
+    opacity: imgLoaded ? 1 : 0,
+    transition: imgTransition,
+    cursor: isZoomed ? "grab" : "default",
+    touchAction: "none",
+    userSelect: "none",
+    WebkitUserSelect: "none",
+  };
 
   if (!mounted) return null;
 
@@ -179,57 +439,78 @@ export function Lightbox({ photos, initialIndex, onClose }: Props) {
       role="dialog"
       aria-modal="true"
       aria-label="사진 뷰어"
-      className="fixed inset-0 z-[100] flex flex-col select-none"
-      style={{
-        opacity: visible ? 1 : 0,
-        transition: "opacity 0.25s ease",
-      }}
-      onTouchStart={handleTouchStart}
-      onTouchMove={handleTouchMove}
-      onTouchEnd={handleTouchEnd}
+      className="fixed inset-0 z-[100] flex flex-col"
+      style={{ opacity: visible ? 1 : 0, transition: "opacity 0.25s ease" }}
     >
-      {/* ─── 배경 딤 ─── */}
-      <div
-        className="absolute inset-0 bg-black"
-        aria-hidden="true"
-      />
+      {/* ─── 배경 ─── */}
+      <div className="absolute inset-0 bg-black" aria-hidden="true" />
 
-      {/* ─── 상단 바: 인덱스 + 닫기 ─── */}
-      <div className="relative z-10 flex items-center justify-between px-4 sm:px-6 py-3 shrink-0">
+      {/* ─── 상단 바 ─── */}
+      <div className="relative z-10 flex items-center justify-between px-4 sm:px-6 py-3 shrink-0 select-none">
         <span className="text-white/60 text-sm font-medium tabular-nums">
           {index + 1}
           <span className="mx-1.5 text-white/25">/</span>
           {photos.length}
         </span>
-
-        <button
-          ref={closeBtnRef}
-          type="button"
-          onClick={handleClose}
-          aria-label="닫기 (Esc)"
-          className="w-10 h-10 flex items-center justify-center rounded-full text-white/60 hover:text-white hover:bg-white/10 transition-all duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
-        >
-          <svg
-            width="17"
-            height="17"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2.5"
-            strokeLinecap="round"
+        <div className="flex items-center gap-2">
+          {/* 줌 리셋 버튼 — 줌 상태일 때만 표시 */}
+          {isZoomed && (
+            <button
+              type="button"
+              onClick={resetZoom}
+              className="h-8 px-3 flex items-center gap-1.5 rounded-full bg-white/10 text-white/80 text-xs font-medium hover:bg-white/20 transition-all"
+            >
+              <svg
+                width="12"
+                height="12"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+              >
+                <circle cx="11" cy="11" r="8" />
+                <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                <line x1="11" y1="8" x2="11" y2="14" />
+                <line x1="8" y1="11" x2="14" y2="11" />
+              </svg>
+              원래 크기
+            </button>
+          )}
+          <button
+            ref={closeBtnRef}
+            type="button"
+            onClick={handleClose}
+            aria-label="닫기 (Esc)"
+            className="w-10 h-10 flex items-center justify-center rounded-full text-white/60 hover:text-white hover:bg-white/10 transition-all duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
           >
-            <path d="M18 6L6 18M6 6l12 12" />
-          </svg>
-        </button>
+            <svg
+              width="17"
+              height="17"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+            >
+              <path d="M18 6L6 18M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
       </div>
 
       {/* ─── 이미지 영역 ─── */}
-      {/* 이미지 바깥(여백) 클릭 → 닫기 / 이미지 클릭 → stopPropagation */}
+      {/* touch-action: none → 브라우저 기본 핀치줌·스크롤 차단, 우리가 직접 처리 */}
       <div
+        ref={imageAreaRef}
         className="relative flex-1 flex items-center justify-center overflow-hidden"
-        onClick={handleClose}
+        style={{ touchAction: "none" }}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        onClick={!isZoomed ? handleClose : undefined}
       >
-        {/* 블러 플레이스홀더 (썸네일 → 원본 로딩 중 표시) */}
+        {/* 블러 플레이스홀더 */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={photo.thumbUrl}
@@ -242,21 +523,32 @@ export function Lightbox({ photos, initialIndex, onClose }: Props) {
           ].join(" ")}
         />
 
-        {/* 원본 이미지 — key 변경 시 re-mount → 애니메이션 재생 */}
+        {/* 원본 이미지 */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
+          ref={imgRef}
           key={photo.url}
           src={photo.url}
           alt={caption ?? ""}
           onLoad={() => setImgLoaded(true)}
           draggable={false}
           onClick={(e) => e.stopPropagation()}
+          onDoubleClick={handleDoubleClick}
           className="relative z-10 max-w-full max-h-full w-auto h-auto object-contain"
           style={imgStyle}
         />
 
-        {/* ← 이전 버튼 */}
-        {index > 0 && (
+        {/* 줌 안내 힌트 (첫 로드 시) */}
+        {imgLoaded && !isZoomed && (
+          <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-20 pointer-events-none">
+            <span className="text-white/20 text-xs select-none hidden sm:block">
+              더블클릭 · 휠로 확대 / ← → 이동
+            </span>
+          </div>
+        )}
+
+        {/* ← 이전 버튼 (줌 상태에서 숨김) */}
+        {!isZoomed && index > 0 && (
           <button
             type="button"
             onClick={(e) => {
@@ -281,8 +573,8 @@ export function Lightbox({ photos, initialIndex, onClose }: Props) {
           </button>
         )}
 
-        {/* → 다음 버튼 */}
-        {index < photos.length - 1 && (
+        {/* → 다음 버튼 (줌 상태에서 숨김) */}
+        {!isZoomed && index < photos.length - 1 && (
           <button
             type="button"
             onClick={(e) => {
@@ -308,68 +600,69 @@ export function Lightbox({ photos, initialIndex, onClose }: Props) {
         )}
       </div>
 
-      {/* ─── 하단 바: 캡션 + 썸네일 스트립 ─── */}
-      <div className="relative z-10 shrink-0">
-        {/* 캡션 (길면 접기/펼치기) */}
-        {caption && (
-          <div className="px-6 pt-3 pb-1 text-center">
-            <p
-              className={[
-                "text-white/65 text-sm leading-relaxed mx-auto max-w-lg",
-                !captionExpanded ? "line-clamp-1" : "",
-              ].join(" ")}
-            >
-              {caption}
-            </p>
-            {captionIsLong && (
-              <button
-                type="button"
-                onClick={() => setCaptionExpanded((v) => !v)}
-                className="mt-0.5 text-white/35 text-xs hover:text-white/65 transition-colors"
-              >
-                {captionExpanded ? "접기 ↑" : "더 보기 ↓"}
-              </button>
-            )}
-          </div>
-        )}
-
-        {/* 썸네일 스트립 */}
-        {photos.length > 1 && (
-          <div
-            ref={thumbStripRef}
-            className="lb-thumb-strip flex gap-1.5 px-4 py-2 pb-4 overflow-x-auto"
-            style={{ scrollbarWidth: "none" }}
-          >
-            {photos.map((p, i) => (
-              <button
-                key={i}
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  navigate(i);
-                }}
-                aria-label={`사진 ${i + 1} 보기`}
+      {/* ─── 하단 바: 캡션 + 썸네일 (줌 상태에서 숨김) ─── */}
+      {!isZoomed && (
+        <div className="relative z-10 shrink-0 select-none">
+          {/* 캡션 */}
+          {caption && (
+            <div className="px-6 pt-3 pb-1 text-center">
+              <p
                 className={[
-                  "shrink-0 w-12 h-12 rounded-lg overflow-hidden",
-                  "transition-all duration-200",
-                  i === index
-                    ? "ring-2 ring-white ring-offset-1 ring-offset-black opacity-100 scale-110"
-                    : "opacity-35 hover:opacity-65 scale-100",
+                  "text-white/65 text-sm leading-relaxed mx-auto max-w-lg",
+                  !captionExpanded ? "line-clamp-1" : "",
                 ].join(" ")}
               >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={p.thumbUrl}
-                  alt=""
-                  aria-hidden="true"
-                  className="w-full h-full object-cover"
-                  loading="lazy"
-                />
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
+                {caption}
+              </p>
+              {captionIsLong && (
+                <button
+                  type="button"
+                  onClick={() => setCaptionExpanded((v) => !v)}
+                  className="mt-0.5 text-white/35 text-xs hover:text-white/65 transition-colors"
+                >
+                  {captionExpanded ? "접기 ↑" : "더 보기 ↓"}
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* 썸네일 스트립 */}
+          {photos.length > 1 && (
+            <div
+              ref={thumbStripRef}
+              className="lb-thumb-strip flex gap-1.5 px-4 py-2 pb-4 overflow-x-auto"
+              style={{ scrollbarWidth: "none", touchAction: "pan-x" }}
+            >
+              {photos.map((p, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    navigate(i);
+                  }}
+                  aria-label={`사진 ${i + 1} 보기`}
+                  className={[
+                    "shrink-0 w-12 h-12 rounded-lg overflow-hidden transition-all duration-200",
+                    i === index
+                      ? "ring-2 ring-white ring-offset-1 ring-offset-black opacity-100 scale-110"
+                      : "opacity-35 hover:opacity-65 scale-100",
+                  ].join(" ")}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={p.thumbUrl}
+                    alt=""
+                    aria-hidden="true"
+                    className="w-full h-full object-cover"
+                    loading="lazy"
+                  />
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>,
     document.body
   );
