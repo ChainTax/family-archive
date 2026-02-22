@@ -9,7 +9,6 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  ReferenceLine,
 } from "recharts";
 
 // ─── Types ────────────────────────────────────────────────────
@@ -387,25 +386,6 @@ export function GrowthChart({ records }: { records: GrowthRecord[] }) {
               cursor={{ stroke: "#CFC9BF", strokeWidth: 1.5 }}
             />
 
-            {/* 실측 포인트 레퍼런스 라인 (라벨 있는 경우만) */}
-            {chartData
-              .filter((d) => d.isActual && d.label)
-              .map((d) => (
-                <ReferenceLine
-                  key={d.dateMs}
-                  x={d.dateMs}
-                  stroke="#CC7A4A"
-                  strokeDasharray="4 4"
-                  strokeOpacity={0.4}
-                  label={{
-                    value: d.label,
-                    position: "insideTopRight",
-                    fontSize: 10,
-                    fill: "#CC7A4A",
-                    dy: -4,
-                  }}
-                />
-              ))}
 
             {/* 키 라인 */}
             {activeTab === "height" && hasHeight && (

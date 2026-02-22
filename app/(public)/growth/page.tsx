@@ -96,47 +96,6 @@ export default async function GrowthPage() {
         <GrowthChart records={serialized} />
       </div>
 
-      {/* 측정 기록 목록 */}
-      {records.length > 0 && (
-        <div className="mt-10">
-          <h2 className="text-base font-semibold text-text-primary mb-4">측정 기록</h2>
-          <div className="space-y-2">
-            {[...serialized].reverse().map((r) => (
-              <div
-                key={r.id}
-                className="flex items-center gap-4 px-5 py-3 bg-bg-secondary rounded-xl border border-border-default"
-              >
-                <div className="flex items-center gap-3 flex-1 flex-wrap">
-                  <time className="text-sm font-medium text-text-primary whitespace-nowrap">
-                    {new Date(r.date).toLocaleDateString("ko-KR", {
-                      year: "numeric",
-                      month: "long",
-                      day: "numeric",
-                    })}
-                  </time>
-                  {r.label && (
-                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-brand/10 text-brand">
-                      {r.label}
-                    </span>
-                  )}
-                </div>
-                <div className="flex items-center gap-4 text-sm shrink-0">
-                  {r.height != null && (
-                    <span className="text-text-primary font-semibold">
-                      {r.height} <span className="text-text-tertiary text-xs font-normal">cm</span>
-                    </span>
-                  )}
-                  {r.weight != null && (
-                    <span className="text-[#7A8ECC] font-semibold">
-                      {r.weight} <span className="text-text-tertiary text-xs font-normal">kg</span>
-                    </span>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
     </div>
   );
 }
