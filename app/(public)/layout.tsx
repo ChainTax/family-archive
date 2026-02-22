@@ -17,7 +17,7 @@ export default async function PublicLayout({
             href="/"
             className="flex items-center gap-2 text-xl font-bold text-text-primary hover:text-brand transition-colors"
           >
-            <img src="/logo.png" alt="" className="w-8 h-8 object-contain mix-blend-multiply" />
+            <img src="/logo.png" alt="" className="w-9 h-9 object-contain" />
             재린월드
           </Link>
           <div className="flex items-center gap-3 sm:gap-6">

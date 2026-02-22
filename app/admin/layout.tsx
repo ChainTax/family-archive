@@ -22,7 +22,7 @@ export default async function AdminLayout({
       <aside className="w-56 shrink-0 bg-white border-r border-border-default flex flex-col">
         <div className="px-5 py-4 border-b border-border-default">
           <Link href="/" className="flex items-center gap-1.5 text-base font-bold text-text-primary">
-            <img src="/logo.png" alt="" className="w-6 h-6 object-contain mix-blend-multiply" />
+            <img src="/logo.png" alt="" className="w-7 h-7 object-contain" />
             재린월드
           </Link>
           <p className="text-xs text-text-tertiary mt-0.5">{role}</p>
