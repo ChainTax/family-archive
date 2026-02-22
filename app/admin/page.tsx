@@ -7,14 +7,14 @@ export const metadata = { title: "대시보드" };
 export default async function AdminDashboardPage() {
   const session = await auth();
 
-  let postCount = 0, albumCount = 0, photoCount = 0, pendingGuestbook = 0, milestoneCount = 0;
+  let postCount = 0, albumCount = 0, photoCount = 0, growthCount = 0, milestoneCount = 0;
   try {
-    [postCount, albumCount, photoCount, pendingGuestbook, milestoneCount] =
+    [postCount, albumCount, photoCount, growthCount, milestoneCount] =
       await Promise.all([
         prisma.post.count({ where: { status: "PUBLISHED" } }),
         prisma.album.count(),
         prisma.photo.count(),
-        prisma.guestbookEntry.count({ where: { approved: false } }),
+        prisma.growthRecord.count(),
         prisma.milestone.count(),
       ]);
   } catch {
@@ -25,12 +25,7 @@ export default async function AdminDashboardPage() {
     { label: "게시된 글", value: postCount, href: "/admin/posts" },
     { label: "전체 앨범", value: albumCount, href: "/admin/albums" },
     { label: "사진 수", value: photoCount, href: "/admin/albums" },
-    {
-      label: "미승인 방명록",
-      value: pendingGuestbook,
-      href: "/admin/guestbook",
-      highlight: pendingGuestbook > 0,
-    },
+    { label: "성장기록", value: growthCount, href: "/admin/growth" },
     { label: "마일스톤", value: milestoneCount, href: "/admin/milestones" },
   ];
 
@@ -44,19 +39,9 @@ export default async function AdminDashboardPage() {
       <div className="mt-8 grid grid-cols-2 sm:grid-cols-3 gap-4 max-w-2xl">
         {stats.map((stat) => (
           <Link key={stat.label} href={stat.href}>
-            <div
-              className={`rounded-2xl border p-5 transition-all hover:shadow-sm hover:border-brand/30 ${
-                stat.highlight
-                  ? "border-amber-300 bg-amber-50"
-                  : "border-border-default bg-white"
-              }`}
-            >
+            <div className="rounded-2xl border border-border-default bg-white p-5 transition-all hover:shadow-sm hover:border-brand/30">
               <p className="text-sm text-text-secondary">{stat.label}</p>
-              <p
-                className={`text-3xl font-bold mt-1 ${
-                  stat.highlight ? "text-amber-600" : "text-text-primary"
-                }`}
-              >
+              <p className="text-3xl font-bold mt-1 text-text-primary">
                 {stat.value.toLocaleString()}
               </p>
             </div>

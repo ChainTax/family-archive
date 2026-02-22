@@ -2,9 +2,12 @@
 
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
-import Link from "@tiptap/extension-link";
+import TipTapLink from "@tiptap/extension-link";
 import Placeholder from "@tiptap/extension-placeholder";
-import { useEffect } from "react";
+import Image from "@tiptap/extension-image";
+import { TextStyle } from "@tiptap/extension-text-style";
+import FontFamily from "@tiptap/extension-font-family";
+import { useEffect, useRef, useState } from "react";
 
 interface Props {
   value: string;
@@ -12,15 +15,24 @@ interface Props {
   placeholder?: string;
 }
 
+const FONTS = [
+  { label: "기본", value: "" },
+  { label: "명조", value: "Georgia, serif" },
+  { label: "고딕", value: "'Apple SD Gothic Neo', Arial, sans-serif" },
+  { label: "타자기", value: "'Courier New', monospace" },
+];
+
 function ToolbarBtn({
   onClick,
   active,
   title,
+  disabled,
   children,
 }: {
   onClick: () => void;
   active?: boolean;
   title: string;
+  disabled?: boolean;
   children: React.ReactNode;
 }) {
   return (
@@ -28,8 +40,9 @@ function ToolbarBtn({
       type="button"
       title={title}
       onClick={onClick}
+      disabled={disabled}
       className={[
-        "h-8 w-8 flex items-center justify-center rounded-lg text-sm font-medium transition-colors",
+        "h-8 w-8 flex items-center justify-center rounded-lg text-sm font-medium transition-colors disabled:opacity-40",
         active
           ? "bg-brand text-white"
           : "text-text-secondary hover:bg-bg-secondary",
@@ -41,13 +54,17 @@ function ToolbarBtn({
 }
 
 export function RichEditor({ value, onChange, placeholder = "내용을 입력하세요…" }: Props) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+
   const editor = useEditor({
     extensions: [
-      StarterKit.configure({
-        heading: { levels: [2, 3] },
-      }),
-      Link.configure({ openOnClick: false }),
+      StarterKit.configure({ heading: { levels: [2, 3] } }),
+      TipTapLink.configure({ openOnClick: false }),
       Placeholder.configure({ placeholder }),
+      Image.configure({ allowBase64: false, inline: false }),
+      TextStyle,
+      FontFamily,
     ],
     content: value,
     onUpdate({ editor }) {
@@ -70,10 +87,53 @@ export function RichEditor({ value, onChange, placeholder = "내용을 입력하
 
   if (!editor) return null;
 
+  const currentFont = editor.getAttributes("textStyle").fontFamily ?? "";
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = "";
+    setUploading(true);
+    try {
+      const form = new FormData();
+      form.append("file", file);
+      const res = await fetch("/api/admin/upload", { method: "POST", body: form });
+      if (!res.ok) throw new Error();
+      const { url } = await res.json();
+      editor.chain().focus().setImage({ src: url }).run();
+    } catch {
+      alert("이미지 업로드에 실패했습니다.");
+    } finally {
+      setUploading(false);
+    }
+  };
+
   return (
     <div className="border border-border-default rounded-[10px] overflow-hidden bg-white focus-within:border-brand transition-colors">
-      {/* 툴바 */}
+      {/* ─── 툴바 ─── */}
       <div className="flex items-center gap-0.5 px-2 py-1.5 border-b border-border-default flex-wrap">
+
+        {/* 폰트 선택 */}
+        <select
+          title="폰트"
+          value={currentFont}
+          onChange={(e) => {
+            const font = e.target.value;
+            if (font) {
+              editor.chain().focus().setFontFamily(font).run();
+            } else {
+              editor.chain().focus().unsetFontFamily().run();
+            }
+          }}
+          className="h-8 px-2 text-sm text-text-secondary bg-transparent border border-border-default rounded-lg hover:bg-bg-secondary transition-colors cursor-pointer"
+        >
+          {FONTS.map((f) => (
+            <option key={f.label} value={f.value}>{f.label}</option>
+          ))}
+        </select>
+
+        <div className="w-px h-5 bg-border-default mx-1" />
+
         <ToolbarBtn
           title="굵게"
           onClick={() => editor.chain().focus().toggleBold().run()}
@@ -166,6 +226,34 @@ export function RichEditor({ value, onChange, placeholder = "내용을 입력하
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <polyline points="16 18 22 12 16 6" /><polyline points="8 6 2 12 8 18" />
           </svg>
+        </ToolbarBtn>
+
+        <div className="w-px h-5 bg-border-default mx-1" />
+
+        {/* 이미지 삽입 */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={handleImageUpload}
+        />
+        <ToolbarBtn
+          title={uploading ? "업로드 중…" : "이미지 삽입"}
+          disabled={uploading}
+          onClick={() => fileInputRef.current?.click()}
+        >
+          {uploading ? (
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="animate-spin">
+              <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+            </svg>
+          ) : (
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <rect x="3" y="3" width="18" height="18" rx="2" />
+              <circle cx="8.5" cy="8.5" r="1.5" />
+              <polyline points="21 15 16 10 5 21" />
+            </svg>
+          )}
         </ToolbarBtn>
       </div>
 

@@ -66,6 +66,7 @@ body {
 .prose-editor s  { text-decoration: line-through; }
 .prose-editor a  { color: var(--color-brand); text-decoration: underline; }
 .prose-editor p.is-editor-empty:first-child::before { content: attr(data-placeholder); color: var(--color-text-tertiary); pointer-events: none; float: left; height: 0; }
+.prose-editor img { max-width: 100%; height: auto; display: block; margin: 1rem auto; border-radius: 8px; }
 
 /* ─── Scrollbar (subtle) ─── */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
