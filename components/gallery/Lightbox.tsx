@@ -52,6 +52,14 @@ export function Lightbox({ photos, initialIndex, onClose }: Props) {
   const thumbStripRef = useRef<HTMLDivElement>(null);
   const closeBtnRef = useRef<HTMLButtonElement>(null);
 
+  // 상태 미러 refs — native 이벤트 핸들러(wheel)의 stale closure 방지
+  const scaleRef = useRef(scale);
+  const panXRef = useRef(panX);
+  const panYRef = useRef(panY);
+  useEffect(() => { scaleRef.current = scale; }, [scale]);
+  useEffect(() => { panXRef.current = panX; }, [panX]);
+  useEffect(() => { panYRef.current = panY; }, [panY]);
+
   // 제스처 refs (렌더링 불필요 — ref로 관리)
   const gesture = useRef<Gesture>("idle");
   const isGesturing = useRef(false); // transition 억제용
@@ -60,7 +68,7 @@ export function Lightbox({ photos, initialIndex, onClose }: Props) {
   const touchStartX = useRef(0);
   const touchStartY = useRef(0);
 
-  // 팬 시작 스냅샷
+  // 터치 팬 시작 스냅샷
   const panSnap = useRef({ touchX: 0, touchY: 0, panX: 0, panY: 0 });
 
   // 핀치 시작 스냅샷
@@ -68,6 +76,11 @@ export function Lightbox({ photos, initialIndex, onClose }: Props) {
 
   // 더블탭
   const lastTap = useRef({ time: 0, x: 0, y: 0 });
+
+  // 마우스 드래그 팬 (데스크톱)
+  const mousePanStart = useRef({ x: 0, y: 0, panX: 0, panY: 0 });
+  const isMousePanning = useRef(false);
+  const [mouseGrabbing, setMouseGrabbing] = useState(false);
 
   // ─── 팬 클램프 ────────────────────────────────────────────────
   // naturalWidth/Height 기반으로 표시 크기를 계산하여 경계 내로 제한
@@ -156,26 +169,73 @@ export function Lightbox({ photos, initialIndex, onClose }: Props) {
       });
   }, [index, photos]);
 
-  // ─── 휠 줌 (데스크톱) — passive:false 필요 → native listener ─
+  // ─── 휠 줌 (데스크톱) — passive:false + 커서 위치 기준 ────────
+  // deps에 mounted 포함: mounted=false 시 imageAreaRef가 null이라 리스너 미등록되는 버그 방지
   useEffect(() => {
+    if (!mounted) return;
     const el = imageAreaRef.current;
     if (!el) return;
     const onWheel = (e: WheelEvent) => {
       e.preventDefault();
+      const currentScale = scaleRef.current;
+      const currentPanX = panXRef.current;
+      const currentPanY = panYRef.current;
+
       const factor = e.deltaY < 0 ? 1.12 : 1 / 1.12;
-      setScale((s) => {
-        const next = Math.max(MIN_SCALE, Math.min(MAX_SCALE, s * factor));
-        if (next < SNAP_THRESHOLD) {
-          setPanX(0);
-          setPanY(0);
-          return MIN_SCALE;
-        }
-        return next;
-      });
+      const newScale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, currentScale * factor));
+
+      if (newScale < SNAP_THRESHOLD) {
+        setScale(MIN_SCALE);
+        setPanX(0);
+        setPanY(0);
+        return;
+      }
+
+      // 커서 위치 기준 줌: 커서 아래 지점이 화면에 고정되도록 pan 보정
+      const rect = el.getBoundingClientRect();
+      const cursorX = e.clientX - rect.left - rect.width / 2;
+      const cursorY = e.clientY - rect.top - rect.height / 2;
+      const ratio = newScale / currentScale;
+      const rawPanX = cursorX * (1 - ratio) + currentPanX * ratio;
+      const rawPanY = cursorY * (1 - ratio) + currentPanY * ratio;
+      const clamped = clampPan(rawPanX, rawPanY, newScale);
+
+      setScale(newScale);
+      setPanX(clamped.x);
+      setPanY(clamped.y);
     };
     el.addEventListener("wheel", onWheel, { passive: false });
     return () => el.removeEventListener("wheel", onWheel);
-  }, []);
+  }, [mounted, clampPan]);
+
+  // ─── 마우스 드래그 팬 (데스크톱) — 전역 리스너 ──────────────
+  // 요소 밖으로 마우스가 나가도 팬이 끊기지 않도록 document에 등록
+  useEffect(() => {
+    if (!mounted) return;
+    const onMouseMove = (e: MouseEvent) => {
+      if (!isMousePanning.current) return;
+      const dx = e.clientX - mousePanStart.current.x;
+      const dy = e.clientY - mousePanStart.current.y;
+      const clamped = clampPan(
+        mousePanStart.current.panX + dx,
+        mousePanStart.current.panY + dy,
+        scaleRef.current
+      );
+      setPanX(clamped.x);
+      setPanY(clamped.y);
+    };
+    const onMouseUp = () => {
+      if (!isMousePanning.current) return;
+      isMousePanning.current = false;
+      setMouseGrabbing(false);
+    };
+    document.addEventListener("mousemove", onMouseMove);
+    document.addEventListener("mouseup", onMouseUp);
+    return () => {
+      document.removeEventListener("mousemove", onMouseMove);
+      document.removeEventListener("mouseup", onMouseUp);
+    };
+  }, [mounted, clampPan]);
 
   // ─── 닫기 (페이드아웃 후 unmount) ───────────────────────────
   const handleClose = useCallback(() => {
@@ -215,17 +275,49 @@ export function Lightbox({ photos, initialIndex, onClose }: Props) {
     return () => window.removeEventListener("keydown", onKey);
   }, [goPrev, goNext, handleClose, scale, resetZoom]);
 
-  // ─── 더블클릭 줌 (데스크톱) ─────────────────────────────────
+  // ─── 마우스 다운 — 줌 상태에서 드래그 팬 시작 ──────────────
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    if (scaleRef.current <= MIN_SCALE) return;
+    e.preventDefault();
+    isMousePanning.current = true;
+    setMouseGrabbing(true);
+    mousePanStart.current = {
+      x: e.clientX,
+      y: e.clientY,
+      panX: panXRef.current,
+      panY: panYRef.current,
+    };
+  }, []);
+
+  // ─── 더블클릭 줌 — 클릭 위치 기준으로 확대 ────────────────
   const handleDoubleClick = useCallback(
     (e: React.MouseEvent) => {
       e.stopPropagation();
       if (scale > MIN_SCALE) {
         resetZoom();
-      } else {
-        setScale(2.5);
+        return;
       }
+      const newScale = 2.5;
+      const area = imageAreaRef.current;
+      if (!area) { setScale(newScale); return; }
+
+      // 클릭 지점을 이미지 영역 중심 기준 좌표로 변환
+      const rect = area.getBoundingClientRect();
+      const clickX = e.clientX - rect.left - rect.width / 2;
+      const clickY = e.clientY - rect.top - rect.height / 2;
+
+      // 클릭 지점이 화면에서 같은 위치에 머물도록 pan 계산
+      // after: center + P*newScale + pan = before: center + P (scale=1, pan=0)
+      // → pan = clickX*(1-newScale)
+      const rawPanX = clickX * (1 - newScale);
+      const rawPanY = clickY * (1 - newScale);
+      const clamped = clampPan(rawPanX, rawPanY, newScale);
+
+      setScale(newScale);
+      setPanX(clamped.x);
+      setPanY(clamped.y);
     },
-    [scale, resetZoom]
+    [scale, resetZoom, clampPan]
   );
 
   // ─── 터치 시작 ───────────────────────────────────────────────
@@ -426,7 +518,7 @@ export function Lightbox({ photos, initialIndex, onClose }: Props) {
     transform: imgTransform,
     opacity: imgLoaded ? 1 : 0,
     transition: imgTransition,
-    cursor: isZoomed ? "grab" : "default",
+    cursor: isZoomed ? (mouseGrabbing ? "grabbing" : "grab") : "default",
     touchAction: "none",
     userSelect: "none",
     WebkitUserSelect: "none",
@@ -500,11 +592,12 @@ export function Lightbox({ photos, initialIndex, onClose }: Props) {
       </div>
 
       {/* ─── 이미지 영역 ─── */}
-      {/* touch-action: none → 브라우저 기본 핀치줌·스크롤 차단, 우리가 직접 처리 */}
+      {/* touch-action: none → 브라우저 기본 핀치줌·스크롤 차단 */}
       <div
         ref={imageAreaRef}
         className="relative flex-1 flex items-center justify-center overflow-hidden"
         style={{ touchAction: "none" }}
+        onMouseDown={handleMouseDown}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
