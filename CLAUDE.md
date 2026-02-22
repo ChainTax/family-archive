@@ -1,4 +1,4 @@
-# FamilyArchive — CLAUDE.md
+# 재린월드 — CLAUDE.md
 
 > 이 파일은 Claude Code가 세션 시작 시 자동으로 읽습니다.
 > 새 기능 구현 전 반드시 "빌드 스텝 현황"을 확인하세요.
@@ -7,8 +7,10 @@
 
 ## 제품 개요
 
-가족의 글·사진·여행 기록을 Toss 톤 고급 UI/UX로 남기는 플랫폼.
-공개/링크공유/가족전용 권한을 안전하게 관리하고, 관리자 페이지에서 모바일로도 쉽게 업로드할 수 있어야 한다.
+**재린월드** — 가족의 글·사진·여행 기록을 남기는 플랫폼.
+공개/링크공유/가족전용 권한을 안전하게 관리하고, 관리자 페이지에서 모바일로도 쉽게 업로드할 수 있다.
+
+> 이전 코드명: FamilyArchive
 
 ---
 
@@ -17,27 +19,30 @@
 | 레이어 | 선택 |
 |---|---|
 | Framework | Next.js 15 (App Router) + TypeScript strict |
-| Styling | Tailwind CSS v3 (Toss 디자인 토큰) |
+| Styling | Tailwind CSS v3 (커스텀 Warm 디자인 토큰) |
+| Font | Noto Sans KR (Google Fonts, `@import` in globals.css) |
 | Auth | NextAuth v5 beta (`next-auth@beta`) |
 | DB | PostgreSQL + Prisma 7.4.1 |
 | Image | Sharp (서버사이드) |
 | Storage | S3-compatible (개발: 로컬 파일시스템, 운영: Cloudflare R2) |
 | Map | Leaflet + OpenStreetMap |
 | Search | PostgreSQL FTS + pg_trgm |
+| Deploy | Vercel (GitHub 자동 배포) |
 
 ---
 
-## 디자인 토큰 (Toss 톤)
+## 디자인 토큰 (Warm Palette)
 
 ```
-Brand:          #3182F6
-Brand Hover:    #1B64DA
-BG Primary:     #FFFFFF
-BG Secondary:   #F2F4F6
-Text Primary:   #191F28
-Text Secondary: #4E5968
-Text Tertiary:  #8B95A1
-Border:         #E5E8EB
+Brand:          #CC7A4A   (따뜻한 테라코타)
+Brand Hover:    #B5622E
+BG Primary:     #FAFAF8   (따뜻한 오프화이트)
+BG Secondary:   #F2F0E8
+Text Primary:   #1C1B18
+Text Secondary: #5C5850
+Text Tertiary:  #9C9890
+Border Default: #E5E0D8
+Border Strong:  #CFC9BF
 ```
 
 CSS 변수는 `app/globals.css`에 정의됨.
@@ -67,6 +72,8 @@ Tailwind 토큰은 `tailwind.config.ts`에 정의됨 (`bg-brand`, `text-text-pri
 
 ## Prisma 7 주의사항 (중요)
 
+### datasource 설정 변경
+
 Prisma 7부터 `schema.prisma`의 datasource에 `url` 속성이 제거됨.
 
 ```prisma
@@ -82,9 +89,33 @@ datasource db {
 }
 ```
 
-- `prisma.config.ts`: schema 경로 지정 (tsconfig.json의 `exclude`에 추가됨)
-- `lib/prisma.ts`: `PrismaPg` 어댑터에 `connectionString` 주입
+- `prisma.config.ts`: schema 경로 + connectionString 지정
+- `lib/prisma.ts`: `PrismaPg` 어댑터에 connectionString + SSL 옵션 주입
 - migrate 실행 시 `DATABASE_URL` 환경변수 필요
+
+### enum 타입 export 변경
+
+Prisma 7에서 `@prisma/client`가 enum(`Visibility`, `PostStatus`)과 `Prisma` 네임스페이스를 **export하지 않음**.
+
+```typescript
+// ❌ Prisma 7에서 동작하지 않음
+import { Visibility, Prisma } from "@prisma/client";
+
+// ✅ 로컬 타입으로 직접 정의
+type Visibility = "PUBLIC" | "UNLISTED" | "PRIVATE";
+type PostStatus = "DRAFT" | "SCHEDULED" | "PUBLISHED";
+
+// lib/audit.ts의 JsonValue: null 제외 (Prisma JSON input 호환)
+type JsonValue = string | number | boolean | JsonValue[] | { [key: string]: JsonValue };
+```
+
+### Vercel 서버리스 SSL 연결
+
+`@prisma/adapter-pg`의 SSL 연결 문제 방지를 위해 `lib/prisma.ts`에서:
+```typescript
+ssl: connectionString.includes("localhost") ? undefined : { rejectUnauthorized: false }
+```
+로컬호스트가 아닌 환경(Vercel)에서는 `rejectUnauthorized: false`로 연결.
 
 ---
 
@@ -111,36 +142,7 @@ datasource db {
 | Media Pipeline | `docs/agents/media-pipeline.md` | 이미지·EXIF·썸네일·스토리지 |
 | Data/DB | `docs/agents/data-db.md` | 스키마·마이그레이션·쿼리 |
 | QA/Release | `docs/agents/qa-release.md` | AC 검증·이슈 등록·보안 체크 |
-| DevOps | `docs/agents/devops.md` | 배포·인프라 (Step 11 이전 대기) |
-
-### Step별 활성 에이전트
-
-| Step | 활성 에이전트 |
-|------|--------------|
-| 0 | Orchestrator · Backend · Data/DB |
-| 1A | Orchestrator · **Frontend** · QA |
-| 1B | Orchestrator · **Frontend** · **Backend** · Data/DB · QA |
-| 2 | Orchestrator · **Backend** · **Data/DB** · QA |
-| 3 | Orchestrator · **Media Pipeline** · Backend · QA |
-| 4 | Orchestrator · **Frontend** · Backend · QA |
-| 5 | Orchestrator · **Frontend** · Backend · QA |
-| 6 | Orchestrator · **Frontend** · Backend · QA |
-| 7 | Orchestrator · **Frontend** · QA |
-| 8 | Orchestrator · **Frontend** · **Backend** · Data/DB · QA |
-| 9 | Orchestrator · **Frontend** · Backend · Data/DB · QA |
-| 10 | Orchestrator · **Frontend** · Backend · QA |
-| 11 | Orchestrator · Frontend · Backend · Data/DB · **DevOps** · QA |
-
-### 업무 루프 (모든 Step 공통)
-
-```
-1. Orchestrator  → Step 목표·AC 정의, 작업 티켓 분배
-2. 구현 에이전트 → 티켓 구현 + 빌드 확인
-3. QA           → AC 체크리스트 검증, P0/P1/P2 이슈 발행
-4. Orchestrator  → P0/P1 이슈 담당자에게 재할당
-5. 구현 에이전트 → 수정
-6. QA 재검증    → 통과 시 다음 Step
-```
+| DevOps | `docs/agents/devops.md` | 배포·인프라 |
 
 ### 이슈 등급
 - **P0**: 빌드 실패·보안·인증 우회 → 즉시 블록
@@ -149,21 +151,15 @@ datasource db {
 
 ### 모델 선택 정책
 - **기본: Sonnet 4.6** — 모든 에이전트 기본
-- **Opus 4.6 전환** (에이전트별 조건, 상세는 `docs/agents/README.md` 참고):
-  - Orchestrator: 스코프 트레이드오프·아키텍처 설계 충돌·전체 정리
-  - Frontend: Lightbox 엣지케이스·디자인 시스템 일관성 붕괴 분석
-  - Backend: RBAC 복잡화·private/unlisted 노출 차단 설계
-  - Media Pipeline: 재현 어려운 업로드 버그·대량 업로드 성능 분석
-  - Data/DB: 검색·권한·연결 한 번에 최적화
-  - QA/Release: 출시 전 최종 보안 감사·치명 AC 검증
-  - DevOps: 배포 환경 꼬임(권한·도메인·캐시) 원인 추적
+- **Opus 4.6 전환** (에이전트별 조건, 상세는 `docs/agents/README.md` 참고)
 - **승인 원칙**: 위 목록 외 상황에서 Opus 전환 필요 시 **사용자 승인을 먼저 구한다**
 
 ---
 
 ## 빌드 스텝 현황
 
-### 완료
+### ✅ 완료
+
 - **Step 0**: Next.js 초기화, `docs/`, `.env.example`, Tailwind, tsconfig
 - **Step 1A**: 디자인 시스템 — Button/Card/Badge/Chip/Input/Modal + `lib/cn.ts`
 - **Step 1B**: Prisma 전체 스키마, NextAuth v5 hardcoded credentials, middleware, 로그인 페이지, Admin 레이아웃
@@ -175,11 +171,55 @@ datasource db {
 - **Step 7**: 갤러리 UX — `components/gallery/Lightbox.tsx`(키보드·스와이프·프리로드·블러플레이스홀더), `components/gallery/PhotoGrid.tsx`, 앨범 상세 연결
 - **Step 8**: Search + Tags/Series + Archive — `/search`, `/tags/[name]`, `/series/[name]`, `/archive`, 헤더 검색 아이콘, Tag/Series 링크 연결
 - **Step 9**: Map + Pin Editor — Leaflet 지도, `components/map/`, `/admin/map`(분할 패널), `/map`(공개), `/api/admin/places`, `/api/public/places`, AC5 완료
-- **Step 10**: Milestones + Guestbook + Moderation + Audit Log UI — `GuestbookEntry` 스키마 추가, `/admin/milestones`(CRUD 모달), `/admin/guestbook`(승인·삭제), `/guestbook`(공개 폼+목록), `/admin/audit`(OWNER only 페이지네이션), Dashboard 실통계, 헤더 방명록 링크
+- **Step 10**: Milestones + Guestbook + Moderation + Audit Log UI — `GuestbookEntry` 스키마 추가, `/admin/milestones`(CRUD 모달), `/admin/guestbook`(승인·삭제), `/guestbook`(공개 폼+목록), `/admin/audit`(OWNER only 페이지네이션), Dashboard 실통계
 - **Step 11**: RSS·Sitemap·OG + 성능 폴리싱 — `/rss.xml`(RSS 2.0·PUBLIC only), `/sitemap.xml`(PUBLIC 포스트·앨범), `/robots.txt`, Root layout metadataBase+OG+Twitter, 커스텀 404, 보안 headers, `/api/files/*` 캐시 1년, 공개 목록 ISR(60s/300s)
+- **Step 12**: Vercel 배포 + 배포 후 수정 (아래 상세 참고)
 
-### 대기
-- 배포 (Railway/Supabase/Neon + Cloudflare R2) — npx prisma migrate deploy 실행 필요
+### Step 12 상세 — 배포 및 배포 후 수정
+
+**Vercel 배포 설정**
+- GitHub 자동 배포 (main 브랜치 push → 자동 트리거)
+- 빌드 명령: `prisma generate && next build` (package.json에 반영)
+- 환경변수: `DATABASE_URL`, `NEXTAUTH_SECRET`, `NEXTAUTH_URL`, `STORAGE_PROVIDER` 등
+
+**Prisma 7 호환 수정 (빌드 오류 해결)**
+- `Visibility`, `PostStatus` enum: `@prisma/client` export 제거 → 파일별 로컬 type 정의
+- `Prisma` 네임스페이스: `lib/audit.ts`에서 로컬 `JsonValue` 타입으로 교체 (null 제외)
+- implicit any 오류: `audit/page.tsx`, `posts/[id]/route.ts`, `posts/route.ts`, `sitemap.ts`, `rss.xml/route.ts` 각각 명시적 타입 추가
+- `outputFileTracingRoot` 제거: Vercel에서 경로 이중화(`/vercel/path0/vercel/path0/`) 발생 → `next.config.ts`에서 삭제
+
+**리브랜딩: FamilyArchive → 재린월드**
+- 사이트명, 로그인 페이지, 헤더/푸터, 메타데이터 전부 `재린월드`로 변경
+
+**홈페이지 개편 (`app/page.tsx`)**
+- 최근 게시글 3개 (PUBLIC + PUBLISHED, 3열 그리드)
+- 최근 앨범 4개 (PUBLIC, 4열 그리드)
+- 최근 마일스톤 4개 (PUBLIC, 리스트)
+- `revalidate = 300` (ISR 5분)
+
+**공개 레이아웃 개편 (`app/(public)/layout.tsx`)**
+- 메뉴: 기록(블로그), 앨범, 발자취(지도), 검색 아이콘 — 방명록·아카이브 제거
+- 비로그인 상태: 로그인 탭 제거 (홈화면에서 로그인 가능)
+- 로그인 상태: 관리자 링크만 표시
+- `max-w-6xl`, `h-16`, `gap-6`, `text-base` 네비게이션
+
+**디자인 시스템 변경**
+- 색상: Toss 블루 → Warm 팔레트 (`#CC7A4A`, `#FAFAF8`, `#F2F0E8` 등)
+- 폰트: `Noto Sans KR` (Google Fonts `@import` in `app/globals.css`)
+- `tailwind.config.ts` 토큰 전면 교체
+
+**블로그 상세 페이지 수정**
+- `findUnique` → `findFirst({ where: { slug } })`로 변경 (Prisma 7 안전한 방식)
+- `status` 조건을 `where`에서 제거 → `select`에 포함 후 별도 체크
+
+**DB 연결 안정화 (`lib/prisma.ts`)**
+- `DATABASE_URL` 미설정 시 명시적 에러 throw
+- Vercel 서버리스 SSL 연결 문제 방지: `ssl: { rejectUnauthorized: false }` (로컬 제외)
+
+**상세 페이지 에러 핸들링**
+- `blog/[slug]`, `albums/[slug]`: `export const dynamic = "force-dynamic"` 추가
+- DB 에러 rethrow (조용한 404 대신 500으로 실제 오류 노출)
+- `notFound()` 전 `console.warn` 추가 (Vercel 로그 디버깅)
 
 ---
 
@@ -187,42 +227,54 @@ datasource db {
 
 ```
 CLAUDE.md                           이 파일
-docs/agents/README.md               에이전트 팀 가이드 (Step별 배정표·업무루프)
-docs/agents/{role}.md               각 에이전트 역할 정의
+docs/agents/README.md               에이전트 팀 가이드
 .env.example                        환경변수 템플릿
 .env.local                          로컬 개발용 (git 제외)
-docs/decisions.md                   기술 결정 문서
-docs/architecture.md                C4 아키텍처 다이어그램
 
 prisma/schema.prisma                전체 DB 스키마
-prisma.config.ts                    Prisma 7 설정 (tsconfig exclude)
-lib/prisma.ts                       PrismaClient 싱글턴
-lib/                                서버 유틸리티 모음
-
-auth.config.ts                      Edge-safe 공통 설정 (JWT callbacks, pages)
-auth.ts                             NextAuth v5 풀 설정 (Credentials + Prisma + bcrypt + AuditLog)
-middleware.ts                       라우트 가드 (auth.config.ts만 import → Edge-safe)
-lib/audit.ts                        AuditLog 생성 헬퍼
+prisma.config.ts                    Prisma 7 설정
+lib/prisma.ts                       PrismaClient (PrismaPg 어댑터 + SSL)
+lib/audit.ts                        AuditLog 헬퍼 (로컬 JsonValue 타입)
 lib/media.ts                        Sharp 이미지 처리 (EXIF 제거+WebP+썸네일)
 lib/storage.ts                      스토리지 어댑터 (local | s3 | r2)
-prisma/seed.ts                      관리자 계정 초기 시드 (tsx prisma/seed.ts)
+prisma/seed.ts                      관리자 계정 초기 시드
 
-app/api/admin/upload/route.ts       이미지 업로드 POST (인증 필요)
-app/api/files/[...path]/route.ts    로컬 파일 서빙 (STORAGE_PROVIDER=local 전용)
+auth.config.ts                      Edge-safe 공통 설정 (JWT callbacks, pages)
+auth.ts                             NextAuth v5 풀 설정 (Credentials + Prisma + bcrypt)
+middleware.ts                       라우트 가드 (auth.config.ts만 import → Edge-safe)
 
-app/globals.css                     CSS 변수 (디자인 토큰)
+app/globals.css                     CSS 변수 + Noto Sans KR import
 app/layout.tsx                      루트 레이아웃 + SessionProvider
-app/providers.tsx                   클라이언트 Provider 묶음
-app/(auth)/login/page.tsx           로그인 페이지
+app/page.tsx                        홈페이지 (최근 글·앨범·마일스톤, ISR 300s)
+app/not-found.tsx                   커스텀 404 페이지
+app/(auth)/login/page.tsx           로그인 페이지 (재린월드)
 app/admin/layout.tsx                Admin 사이드바 레이아웃 (역할별)
 app/admin/page.tsx                  대시보드 (실통계: 글·앨범·사진·방명록·마일스톤)
-app/api/auth/[...nextauth]/         NextAuth 핸들러
-app/(public)/layout.tsx             Public 헤더·푸터 레이아웃
-app/(public)/blog/                  블로그 목록·상세
-app/(public)/albums/                앨범 목록·상세
+app/(public)/layout.tsx             Public 헤더·푸터 (기록·앨범·발자취·검색)
+app/(public)/blog/page.tsx          기록 목록 (ISR 60s, PUBLIC+PUBLISHED)
+app/(public)/blog/[slug]/page.tsx   기록 상세 (force-dynamic, findFirst)
+app/(public)/albums/page.tsx        앨범 목록 (ISR 60s, PUBLIC)
+app/(public)/albums/[slug]/page.tsx 앨범 상세 (force-dynamic)
+app/(public)/map/page.tsx           발자취 공개 지도
+app/(public)/search/page.tsx        검색
+app/(public)/tags/[name]/page.tsx   태그별 목록
+app/(public)/series/[name]/page.tsx 시리즈별 목록
+app/(public)/guestbook/page.tsx     방명록 (공개 폼+승인된 목록)
 
-components/ui/                      디자인 시스템 컴포넌트 (Step 1A)
-components/editor/RichEditor.tsx    TipTap 리치 에디터 (Step 5)
+app/api/admin/upload/route.ts       이미지 업로드 POST
+app/api/files/[...path]/route.ts    로컬 파일 서빙 (STORAGE_PROVIDER=local)
+app/rss.xml/route.ts                RSS 2.0 피드 (PUBLIC only)
+app/sitemap.ts                      XML 사이트맵 (PUBLIC only)
+app/robots.txt/route.ts             robots.txt
+
+next.config.ts                      보안 headers, 서버 액션 50MB, 이미지 설정
+tailwind.config.ts                  Warm 팔레트 디자인 토큰
+
+components/ui/                      디자인 시스템 (Button/Card/Badge/Chip/Input/Modal)
+components/editor/RichEditor.tsx    TipTap 리치 에디터
+components/gallery/Lightbox.tsx     전체화면 갤러리 (키보드·스와이프)
+components/gallery/PhotoGrid.tsx    사진 그리드 (Masonry-like)
+components/map/                     Leaflet 지도 컴포넌트
 types/next-auth.d.ts                Session/JWT 타입 확장
 ```
 
@@ -232,13 +284,13 @@ types/next-auth.d.ts                Session/JWT 타입 확장
 
 ```bash
 npm run dev      # 개발 서버 (http://localhost:3000)
-npm run build    # 프로덕션 빌드 (AC 검증용)
+npm run build    # 프로덕션 빌드 (= prisma generate && next build)
 npm run lint     # ESLint
 
 # DB (PostgreSQL 연결 후)
 npx prisma migrate dev   # 마이그레이션 실행
 npx prisma studio        # DB GUI
-npx prisma db seed       # 시드 데이터 (Step 2에서 생성)
+npx prisma db seed       # 시드 데이터 (관리자 계정 생성)
 ```
 
 ---
@@ -247,8 +299,8 @@ npx prisma db seed       # 시드 데이터 (Step 2에서 생성)
 
 | AC | 내용 | 담당 Step | 상태 |
 |---|---|---|---|
-| AC1 | 모바일 앨범 생성+사진 20장+캡션+게시 5분 이내 | Step 4 | 구현완료 |
+| AC1 | 모바일 앨범 생성+사진 20장+캡션+게시 5분 이내 | Step 4 | ✅ |
 | AC2 | private 콘텐츠 미인증 접근 불가 | Step 1B | ✅ |
-| AC3 | unlisted 목록·검색·RSS·사이트맵 미노출 | Step 6 | 목록 구현완료 |
-| AC4 | 공개 경로에 GPS EXIF 원본 없음 | Step 3 | 구현완료 |
-| AC5 | 핀 클릭 → 연결 글/앨범 진입 | Step 9 | 대기 |
+| AC3 | unlisted 목록·검색·RSS·사이트맵 미노출 | Step 6 | ✅ |
+| AC4 | 공개 경로에 GPS EXIF 원본 없음 | Step 3 | ✅ |
+| AC5 | 핀 클릭 → 연결 글/앨범 진입 | Step 9 | ✅ |
