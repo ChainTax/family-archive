@@ -97,7 +97,7 @@ export default async function HomePage() {
         {recentPosts.length > 0 && (
           <section>
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-bold text-text-primary">최근 기록</h2>
+              <h2 className="text-xl font-bold text-text-primary">기록</h2>
               <Link href="/blog" className="text-sm text-brand hover:text-brand-hover transition-colors">
                 전체 보기
               </Link>
@@ -110,12 +110,12 @@ export default async function HomePage() {
                   className="group block bg-bg-secondary rounded-2xl overflow-hidden border border-border-default hover:shadow-md transition-shadow"
                 >
                   {post.coverUrl ? (
-                    <div className="h-44 overflow-hidden">
+                    <div className="h-44 bg-bg-secondary overflow-hidden">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
                         src={post.coverUrl}
                         alt={post.title}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-300"
                       />
                     </div>
                   ) : (

@@ -122,7 +122,7 @@ export default async function AlbumPage({ params }: Props) {
   const dateLabel = formatDateRange(album.dateStart, album.dateEnd);
 
   return (
-    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-12">
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-12">
       {/* 앨범 헤더 */}
       <header className="mb-10">
         <div className="flex items-start justify-between gap-4">

@@ -8,7 +8,7 @@ type Props = { searchParams: Promise<{ q?: string }> };
 
 export async function generateMetadata({ searchParams }: Props): Promise<Metadata> {
   const { q } = await searchParams;
-  return { title: q ? `"${q}" 검색 결과 | FamilyArchive` : "검색 | FamilyArchive" };
+  return { title: q ? `"${q}" 검색 결과 | 재린월드` : "검색 | 재린월드" };
 }
 
 export default async function SearchPage({ searchParams }: Props) {
@@ -94,7 +94,7 @@ export default async function SearchPage({ searchParams }: Props) {
 
       {/* 검색 폼 */}
       <form action="/search" method="GET" className="mb-10">
-        <div className="flex gap-2">
+        <div className="flex flex-row gap-2">
           <input
             name="q"
             type="search"
@@ -102,11 +102,11 @@ export default async function SearchPage({ searchParams }: Props) {
             placeholder="글, 앨범, 태그 검색…"
             autoFocus
             autoComplete="off"
-            className="flex-1 h-11 px-4 rounded-xl border border-border-default bg-white text-text-primary placeholder:text-text-tertiary text-sm focus:outline-none focus:border-brand transition-colors"
+            className="flex-1 min-w-0 h-11 px-4 rounded-xl border border-border-default bg-white text-text-primary placeholder:text-text-tertiary text-sm focus:outline-none focus:border-brand transition-colors"
           />
           <button
             type="submit"
-            className="h-11 px-5 rounded-xl bg-brand text-white text-sm font-semibold hover:bg-brand-hover transition-colors"
+            className="shrink-0 h-11 px-5 rounded-xl bg-brand text-white text-sm font-semibold hover:bg-brand-hover transition-colors"
           >
             검색
           </button>

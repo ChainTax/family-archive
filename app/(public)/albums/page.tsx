@@ -2,7 +2,7 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 
 export const revalidate = 60;
-export const metadata = { title: "앨범 | FamilyArchive" };
+export const metadata = { title: "앨범 | 재린월드" };
 
 function formatDateRange(start: Date | null, end: Date | null): string {
   if (!start) return "";
@@ -21,6 +21,7 @@ export default async function AlbumsPage() {
     coverUrl: string | null;
     dateStart: Date | null;
     dateEnd: Date | null;
+    createdAt: Date;
     _count: { photos: number };
   }> = [];
 
@@ -37,6 +38,7 @@ export default async function AlbumsPage() {
         coverUrl: true,
         dateStart: true,
         dateEnd: true,
+        createdAt: true,
         _count: { select: { photos: true } },
       },
     });
@@ -45,7 +47,7 @@ export default async function AlbumsPage() {
   }
 
   return (
-    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-12">
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-12">
       <h1 className="text-2xl font-bold text-text-primary mb-2">앨범</h1>
       <p className="text-text-secondary mb-10">소중한 순간들의 모음.</p>
 
@@ -114,6 +116,14 @@ export default async function AlbumsPage() {
                   <span>{formatDateRange(album.dateStart, album.dateEnd)}</span>
                   <span>{album._count.photos}장</span>
                 </div>
+                <p className="text-xs text-text-tertiary mt-1">
+                  업로드{" "}
+                  {new Date(album.createdAt).toLocaleDateString("ko-KR", {
+                    year: "numeric",
+                    month: "long",
+                    day: "numeric",
+                  })}
+                </p>
               </div>
             </Link>
           ))}
