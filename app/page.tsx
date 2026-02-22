@@ -71,7 +71,7 @@ export default async function HomePage() {
       <section className="py-28 px-4 text-center border-b border-border-default">
         <div className="flex items-center justify-center gap-3 mb-4">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logo.png?v=2" alt="" className="h-14 w-auto" />
+          <img src="/logo.png?v=3" alt="" className="h-14 w-auto" />
           <h1 className="text-5xl font-bold text-text-primary tracking-tight">
             재린월드
           </h1>
