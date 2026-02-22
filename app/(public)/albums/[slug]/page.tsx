@@ -6,6 +6,8 @@ import { Badge } from "@/components/ui";
 import { PhotoGrid } from "@/components/gallery/PhotoGrid";
 import type { Metadata } from "next";
 
+export const dynamic = "force-dynamic";
+
 type Props = { params: Promise<{ slug: string }> };
 
 function formatDateRange(start: Date | null, end: Date | null): string {
@@ -97,10 +99,14 @@ export default async function AlbumPage({ params }: Props) {
       },
     });
   } catch (e) {
-    console.error("[AlbumPage] DB error:", e);
+    console.error("[AlbumPage] DB error for slug:", slug, e);
+    throw e; // 실제 에러를 Vercel 로그에 노출 (조용한 404 방지)
   }
 
-  if (!album) notFound();
+  if (!album) {
+    console.warn("[AlbumPage] Album not found for slug:", slug);
+    notFound();
+  }
 
   // ─── Visibility 규칙 ───────────────────────────────────────────────
   // PUBLIC : 누구나 접근 가능

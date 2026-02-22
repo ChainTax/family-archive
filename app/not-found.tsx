@@ -25,7 +25,7 @@ export default function NotFound() {
             href="/blog"
             className="inline-flex items-center gap-2 rounded-xl bg-white border border-border-default px-5 py-2.5 text-sm font-semibold text-text-primary hover:bg-bg-secondary transition-colors"
           >
-            블로그
+            기록
           </Link>
         </div>
       </div>

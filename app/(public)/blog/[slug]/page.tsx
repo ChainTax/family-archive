@@ -5,6 +5,8 @@ import { auth } from "@/auth";
 import { Badge } from "@/components/ui";
 import type { Metadata } from "next";
 
+export const dynamic = "force-dynamic";
+
 type Props = { params: Promise<{ slug: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -71,11 +73,18 @@ export default async function PostPage({ params }: Props) {
       },
     });
   } catch (e) {
-    console.error("[PostPage] DB error:", e);
+    console.error("[PostPage] DB error for slug:", slug, e);
+    throw e; // 실제 에러를 Vercel 로그에 노출 (조용한 404 방지)
   }
 
-  if (!post) notFound();
-  if (post.status !== "PUBLISHED") notFound();
+  if (!post) {
+    console.warn("[PostPage] Post not found for slug:", slug);
+    notFound();
+  }
+  if (post.status !== "PUBLISHED") {
+    console.warn("[PostPage] Post not published, status:", post.status, "slug:", slug);
+    notFound();
+  }
 
   // ─── Visibility 규칙 ───────────────────────────────────────────────
   if (post.visibility === "PRIVATE") {

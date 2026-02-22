@@ -49,19 +49,12 @@ export default async function PublicLayout({
                 <line x1="21" y1="21" x2="16.65" y2="16.65" />
               </svg>
             </Link>
-            {session ? (
+            {session && (
               <Link
                 href="/admin"
                 className="text-base font-semibold text-brand hover:text-brand-hover transition-colors"
               >
                 관리자
-              </Link>
-            ) : (
-              <Link
-                href="/login"
-                className="text-base text-text-secondary hover:text-text-primary transition-colors"
-              >
-                로그인
               </Link>
             )}
           </div>
