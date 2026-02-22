@@ -1,6 +1,7 @@
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { createAuditLog } from "@/lib/audit";
+import { revalidatePath } from "next/cache";
 
 export async function GET() {
   const session = await auth();
@@ -44,6 +45,11 @@ export async function POST(req: Request) {
       entityId: milestone.id,
     });
   } catch {}
+
+  if (visibility === "PUBLIC") {
+    revalidatePath("/");
+    revalidatePath("/milestones");
+  }
 
   return Response.json({ id: milestone.id }, { status: 201 });
 }

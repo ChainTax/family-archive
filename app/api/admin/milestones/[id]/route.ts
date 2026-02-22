@@ -1,6 +1,7 @@
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { createAuditLog } from "@/lib/audit";
+import { revalidatePath } from "next/cache";
 
 export async function PATCH(
   req: Request,
@@ -32,6 +33,9 @@ export async function PATCH(
     });
   } catch {}
 
+  revalidatePath("/");
+  revalidatePath("/milestones");
+
   return Response.json({ ok: true });
 }
 
@@ -54,6 +58,9 @@ export async function DELETE(
       entityId: id,
     });
   } catch {}
+
+  revalidatePath("/");
+  revalidatePath("/milestones");
 
   return Response.json({ ok: true });
 }
