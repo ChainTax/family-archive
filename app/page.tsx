@@ -26,6 +26,7 @@ export default async function HomePage() {
     title: string;
     slug: string;
     coverUrl: string | null;
+    createdAt: Date;
     _count: { photos: number };
   }> = [];
 
@@ -49,7 +50,7 @@ export default async function HomePage() {
         where: { visibility: "PUBLIC" },
         orderBy: { createdAt: "desc" },
         take: 4,
-        select: { id: true, title: true, slug: true, coverUrl: true, _count: { select: { photos: true } } },
+        select: { id: true, title: true, slug: true, coverUrl: true, createdAt: true, _count: { select: { photos: true } } },
       }),
       prisma.milestone.findMany({
         where: { visibility: "PUBLIC" },
@@ -186,6 +187,13 @@ export default async function HomePage() {
                       {album.title}
                     </p>
                     <p className="text-xs text-text-tertiary mt-0.5">{album._count.photos}장</p>
+                    <p className="text-xs text-text-tertiary mt-0.5">
+                      {new Date(album.createdAt).toLocaleDateString("ko-KR", {
+                        year: "numeric",
+                        month: "long",
+                        day: "numeric",
+                      })}
+                    </p>
                   </div>
                 </Link>
               ))}

@@ -117,7 +117,6 @@ export default async function AlbumsPage() {
                   <span>{album._count.photos}장</span>
                 </div>
                 <p className="text-xs text-text-tertiary mt-1">
-                  업로드{" "}
                   {new Date(album.createdAt).toLocaleDateString("ko-KR", {
                     year: "numeric",
                     month: "long",
