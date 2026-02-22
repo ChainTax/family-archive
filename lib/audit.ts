@@ -1,5 +1,6 @@
-import { Prisma } from "@prisma/client";
 import { prisma } from "./prisma";
+
+type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };
 
 export type AuditAction =
   | "SIGN_IN"
@@ -23,7 +24,7 @@ interface CreateAuditLogArgs {
   action: AuditAction;
   entityType: AuditEntityType;
   entityId: string;
-  diff?: Prisma.InputJsonValue;
+  diff?: JsonValue;
 }
 
 export async function createAuditLog({
