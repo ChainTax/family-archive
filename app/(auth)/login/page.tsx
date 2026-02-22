@@ -38,7 +38,7 @@ function LoginForm() {
       <div className="w-full max-w-sm">
         {/* Logo */}
         <div className="text-center mb-8">
-          <h1 className="text-2xl font-bold text-text-primary">FamilyArchive</h1>
+          <h1 className="text-2xl font-bold text-text-primary">재린월드</h1>
           <p className="mt-1 text-sm text-text-secondary">가족 전용 공간입니다.</p>
         </div>
 

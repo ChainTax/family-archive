@@ -12,19 +12,19 @@ export default async function PublicLayout({
     <div className="min-h-screen flex flex-col bg-bg-primary">
       {/* ─── Header ─── */}
       <header className="sticky top-0 z-40 bg-white/90 backdrop-blur-md border-b border-border-default">
-        <nav className="max-w-4xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
+        <nav className="max-w-6xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
           <Link
             href="/"
             className="font-bold text-text-primary hover:text-brand transition-colors"
           >
-            FamilyArchive
+            재린월드
           </Link>
           <div className="flex items-center gap-4">
             <Link
               href="/blog"
               className="text-sm text-text-secondary hover:text-text-primary transition-colors"
             >
-              블로그
+              기록
             </Link>
             <Link
               href="/albums"
@@ -42,13 +42,7 @@ export default async function PublicLayout({
               href="/map"
               className="text-sm text-text-secondary hover:text-text-primary transition-colors"
             >
-              지도
-            </Link>
-            <Link
-              href="/guestbook"
-              className="text-sm text-text-secondary hover:text-text-primary transition-colors"
-            >
-              방명록
+              발자취
             </Link>
             {/* 검색 아이콘 */}
             <Link
@@ -85,7 +79,7 @@ export default async function PublicLayout({
 
       {/* ─── Footer ─── */}
       <footer className="border-t border-border-default py-10 text-center text-text-tertiary text-sm">
-        © {new Date().getFullYear()} FamilyArchive · 우리 가족의 이야기
+        © {new Date().getFullYear()} 재린월드 · 우리 가족의 이야기
       </footer>
     </div>
   );

@@ -5,7 +5,7 @@ export default function HomePage() {
     <main className="flex min-h-screen flex-col items-center justify-center bg-bg-secondary">
       <div className="text-center">
         <h1 className="text-4xl font-bold text-text-primary tracking-tight">
-          FamilyArchive
+          재린월드
         </h1>
         <p className="mt-3 text-text-secondary text-lg">
           우리 가족의 이야기를 기록합니다.

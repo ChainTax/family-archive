@@ -3,7 +3,7 @@ import { Providers } from "./providers";
 import "./globals.css";
 
 const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
-const appName = process.env.NEXT_PUBLIC_APP_NAME ?? "FamilyArchive";
+const appName = process.env.NEXT_PUBLIC_APP_NAME ?? "재린월드";
 const description = "우리 가족의 이야기를 기록합니다.";
 
 export const metadata: Metadata = {

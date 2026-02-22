@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { Badge } from "@/components/ui";
 
 export const revalidate = 60;
-export const metadata = { title: "블로그 | FamilyArchive" };
+export const metadata = { title: "기록" };
 
 export default async function BlogPage() {
   let posts: Array<{
@@ -38,8 +38,8 @@ export default async function BlogPage() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 py-12">
-      <h1 className="text-2xl font-bold text-text-primary mb-2">블로그</h1>
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-12">
+      <h1 className="text-2xl font-bold text-text-primary mb-2">기록</h1>
       <p className="text-text-secondary mb-10">우리 가족의 이야기를 기록합니다.</p>
 
       {posts.length === 0 ? (

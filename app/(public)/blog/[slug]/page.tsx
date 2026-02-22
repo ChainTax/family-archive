@@ -11,7 +11,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
   try {
-    const post = await prisma.post.findUnique({
+    const post = await prisma.post.findFirst({
       where: { slug, status: "PUBLISHED" },
       select: { title: true, excerpt: true, coverUrl: true },
     });
@@ -54,7 +54,7 @@ export default async function PostPage({ params }: Props) {
   } | null = null;
 
   try {
-    post = await prisma.post.findUnique({
+    post = await prisma.post.findFirst({
       where: { slug, status: "PUBLISHED" },
       select: {
         id: true,
@@ -84,7 +84,7 @@ export default async function PostPage({ params }: Props) {
   }
 
   return (
-    <article className="max-w-2xl mx-auto px-4 sm:px-6 py-12">
+    <article className="max-w-3xl mx-auto px-4 sm:px-6 py-12">
       {/* 커버 이미지 */}
       {post.coverUrl && (
         <div className="w-full h-56 sm:h-72 rounded-2xl overflow-hidden bg-bg-secondary mb-8">
