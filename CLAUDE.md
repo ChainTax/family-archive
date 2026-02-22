@@ -175,6 +175,7 @@ ssl: connectionString.includes("localhost") ? undefined : { rejectUnauthorized: 
 - **Step 11**: RSS·Sitemap·OG + 성능 폴리싱 — `/rss.xml`(RSS 2.0·PUBLIC only), `/sitemap.xml`(PUBLIC 포스트·앨범), `/robots.txt`, Root layout metadataBase+OG+Twitter, 커스텀 404, 보안 headers, `/api/files/*` 캐시 1년, 공개 목록 ISR(60s/300s)
 - **Step 12**: Vercel 배포 + 배포 후 수정 (아래 상세 참고)
 - **Step 13**: UI 폴리싱 + 마일스톤 공개 페이지 (아래 상세 참고)
+- **Step 14**: 성장기록 기능 (아래 상세 참고)
 
 ### Step 12 상세 — 배포 및 배포 후 수정
 
@@ -254,6 +255,45 @@ ssl: connectionString.includes("localhost") ? undefined : { rejectUnauthorized: 
 - 유형별 색상 배지 (BIRTHDAY=핑크, ANNIVERSARY=퍼플, GROWTH=그린, FIRST_EXPERIENCE=블루, OTHER=브랜드)
 - `revalidate = 60` (ISR 1분)
 
+### Step 14 상세 — 성장기록 기능
+
+**DB 모델 추가 (`prisma/schema.prisma`)**
+- `GrowthRecord` 모델: date, height(Float?), weight(Float?), label(String?), visibility, createdAt, updatedAt
+- `prisma db push`로 Neon DB에 반영
+
+**관리자 CRUD (`app/admin/growth/page.tsx`)**
+- 날짜별 키·몸무게 목록 (최신순)
+- 모달로 추가/수정/삭제
+- 공개범위 선택 (PRIVATE·UNLISTED·PUBLIC), 메모(label) 입력
+
+**관리자 API**
+- `app/api/admin/growth/route.ts`: GET (전체 목록) + POST (생성)
+- `app/api/admin/growth/[id]/route.ts`: PATCH + DELETE (감사 로그 포함)
+
+**공개 API (`app/api/public/growth/route.ts`)**
+- 로그인 상태: 전체 기록 반환
+- 비로그인: PUBLIC 기록만 반환
+
+**인터랙티브 차트 (`components/growth/GrowthChart.tsx`)**
+- 자연 3차 스플라인(Natural Cubic Spline) 보간 알고리즘 직접 구현
+- 3일 간격 밀집 포인트 사전 생성 → Recharts `type="linear"` 라인으로 부드러운 곡선 표현
+- 키/몸무게 탭 전환 시 `key={animKey}` re-mount로 차트 재애니메이션
+- 실측값 점만 `ActualDot` 컴포넌트로 강조 표시
+- 커스텀 툴팁: 날짜·값·실측 여부 표시
+- 라벨 있는 측정점에 `ReferenceLine` 표시
+- 색상: 키 `#CC7A4A` (brand), 몸무게 `#7A8ECC`
+
+**공개 성장기록 페이지 (`app/(public)/growth/page.tsx`)**
+- 최근 키·몸무게 카드 (상단)
+- 인터랙티브 곡선 차트
+- 측정 기록 목록 (최신순)
+- 비로그인 + PUBLIC 기록 없음 → 로그인 리다이렉트
+
+**내비게이션 추가**
+- 공개 nav: "성장" 링크 (`/growth`)
+- 관리자 사이드바: "성장기록" 링크 (`/admin/growth`)
+- `lib/audit.ts`: `AuditEntityType`에 `GrowthRecord` 추가
+
 ---
 
 ## 주요 파일 위치
@@ -289,6 +329,7 @@ app/(public)/blog/[slug]/page.tsx   기록 상세 (force-dynamic, findFirst, 커
 app/(public)/albums/page.tsx        앨범 목록 (max-w-6xl, createdAt 날짜 표시)
 app/(public)/albums/[slug]/page.tsx 앨범 상세 (force-dynamic, max-w-6xl)
 app/(public)/milestones/page.tsx    마일스톤 공개 목록 (ISR 60s, PUBLIC, 유형별 색상 배지)
+app/(public)/growth/page.tsx        성장기록 공개 페이지 (force-dynamic, 최근값 카드+차트+목록)
 app/(public)/map/page.tsx           발자취 공개 지도 (메뉴에서 제거, URL 직접 접근 가능)
 app/(public)/search/page.tsx        검색 (모바일 가로 레이아웃 보장)
 app/(public)/tags/[name]/page.tsx   태그별 목록
@@ -309,6 +350,7 @@ components/editor/RichEditor.tsx    TipTap 리치 에디터
 components/gallery/Lightbox.tsx     전체화면 갤러리 (키보드·스와이프)
 components/gallery/PhotoGrid.tsx    사진 그리드 (Masonry-like)
 components/map/                     Leaflet 지도 컴포넌트
+components/growth/GrowthChart.tsx   성장기록 인터랙티브 차트 (자연 3차 스플라인, Recharts)
 types/next-auth.d.ts                Session/JWT 타입 확장
 ```
 
