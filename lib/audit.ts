@@ -1,6 +1,6 @@
 import { prisma } from "./prisma";
 
-type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };
+type JsonValue = string | number | boolean | JsonValue[] | { [key: string]: JsonValue };
 
 export type AuditAction =
   | "SIGN_IN"
