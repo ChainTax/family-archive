@@ -8,21 +8,21 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        brand: "#3182F6",
-        "brand-hover": "#1B64DA",
-        "bg-primary": "#FFFFFF",
-        "bg-secondary": "#F2F4F6",
-        "text-primary": "#191F28",
-        "text-secondary": "#4E5968",
-        "text-tertiary": "#8B95A1",
-        "border-default": "#E5E8EB",
-        "border-strong": "#C9CDD2",
+        brand: "#CC7A4A",
+        "brand-hover": "#B5622E",
+        "bg-primary": "#FAFAF8",
+        "bg-secondary": "#F2F0E8",
+        "text-primary": "#1C1B18",
+        "text-secondary": "#5C5850",
+        "text-tertiary": "#9C9890",
+        "border-default": "#E5E0D8",
+        "border-strong": "#CFC9BF",
       },
       fontFamily: {
         sans: [
+          "'Noto Sans KR'",
           "-apple-system",
           "BlinkMacSystemFont",
-          "'Pretendard'",
           "'Apple SD Gothic Neo'",
           "sans-serif",
         ],
