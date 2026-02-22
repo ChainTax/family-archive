@@ -1,7 +1,6 @@
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { ThemeToggle } from "@/components/ui";
 
 export const metadata = {
   title: { default: "Admin", template: "%s | Admin — 재린월드" },
@@ -51,12 +50,6 @@ export default async function AdminLayout({
             </>
           )}
         </nav>
-
-        {/* 테마 토글 */}
-        <div className="px-3 py-2 border-t border-border-default flex items-center justify-between">
-          <span className="text-xs text-text-tertiary px-3">테마</span>
-          <ThemeToggle />
-        </div>
 
         {/* Sign out */}
         <div className="px-3 py-4 border-t border-border-default">
