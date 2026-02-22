@@ -1,6 +1,7 @@
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { createAuditLog } from "@/lib/audit";
+import { revalidatePath } from "next/cache";
 
 type Visibility = "PUBLIC" | "UNLISTED" | "PRIVATE";
 
@@ -88,6 +89,10 @@ export async function PATCH(
     });
   } catch {}
 
+  revalidatePath("/");
+  revalidatePath("/albums");
+  revalidatePath(`/albums/${album.slug}`);
+
   return Response.json({ id: album.id });
 }
 
@@ -112,6 +117,9 @@ export async function DELETE(
       entityId: id,
     });
   } catch {}
+
+  revalidatePath("/");
+  revalidatePath("/albums");
 
   return new Response(null, { status: 204 });
 }

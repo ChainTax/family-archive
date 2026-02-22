@@ -1,6 +1,7 @@
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { createAuditLog } from "@/lib/audit";
+import { revalidatePath } from "next/cache";
 type Visibility = "PUBLIC" | "UNLISTED" | "PRIVATE";
 
 // ─── GET /api/admin/albums ────────────────────────────────────
@@ -99,6 +100,11 @@ export async function POST(req: Request) {
       entityId: album.id,
     });
   } catch {}
+
+  if ((visibility ?? "PRIVATE") === "PUBLIC") {
+    revalidatePath("/");
+    revalidatePath("/albums");
+  }
 
   return Response.json({ id: album.id, slug: album.slug }, { status: 201 });
 }
