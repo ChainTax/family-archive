@@ -19,10 +19,11 @@ function formatDateRange(start: Date | null, end: Date | null): string {
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { slug } = await params;
+  const rawSlug = (await params).slug;
+  const slug = (() => { try { return decodeURIComponent(rawSlug); } catch { return rawSlug; } })();
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
   try {
-    const album = await prisma.album.findUnique({
+    const album = await prisma.album.findFirst({
       where: { slug },
       select: { title: true, description: true, coverUrl: true },
     });
@@ -45,12 +46,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       },
     };
   } catch {
-    return { title: "FamilyArchive" };
+    return { title: "재린월드" };
   }
 }
 
 export default async function AlbumPage({ params }: Props) {
-  const { slug } = await params;
+  const rawSlug = (await params).slug;
+  const slug = (() => { try { return decodeURIComponent(rawSlug); } catch { return rawSlug; } })();
 
   let album: {
     id: string;
@@ -73,7 +75,7 @@ export default async function AlbumPage({ params }: Props) {
   } | null = null;
 
   try {
-    album = await prisma.album.findUnique({
+    album = await prisma.album.findFirst({
       where: { slug },
       select: {
         id: true,

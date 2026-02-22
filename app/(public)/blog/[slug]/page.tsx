@@ -10,7 +10,8 @@ export const dynamic = "force-dynamic";
 type Props = { params: Promise<{ slug: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { slug } = await params;
+  const rawSlug = (await params).slug;
+  const slug = (() => { try { return decodeURIComponent(rawSlug); } catch { return rawSlug; } })();
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
   try {
     const post = await prisma.post.findFirst({
@@ -41,7 +42,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function PostPage({ params }: Props) {
-  const { slug } = await params;
+  const rawSlug = (await params).slug;
+  const slug = (() => { try { return decodeURIComponent(rawSlug); } catch { return rawSlug; } })();
 
   let post: {
     id: string;
