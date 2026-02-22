@@ -12,7 +12,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
   try {
     const post = await prisma.post.findFirst({
-      where: { slug, status: "PUBLISHED" },
+      where: { slug },
       select: { title: true, excerpt: true, coverUrl: true },
     });
     if (!post) return { title: "글 없음" };
@@ -34,7 +34,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       },
     };
   } catch {
-    return { title: "FamilyArchive" };
+    return { title: "재린월드" };
   }
 }
 
@@ -44,6 +44,7 @@ export default async function PostPage({ params }: Props) {
   let post: {
     id: string;
     title: string;
+    status: string;
     content: string;
     excerpt: string | null;
     coverUrl: string | null;
@@ -55,10 +56,11 @@ export default async function PostPage({ params }: Props) {
 
   try {
     post = await prisma.post.findFirst({
-      where: { slug, status: "PUBLISHED" },
+      where: { slug },
       select: {
         id: true,
         title: true,
+        status: true,
         content: true,
         excerpt: true,
         coverUrl: true,
@@ -68,16 +70,14 @@ export default async function PostPage({ params }: Props) {
         tags: { select: { id: true, name: true } },
       },
     });
-  } catch {
-    // DB 미연결
+  } catch (e) {
+    console.error("[PostPage] DB error:", e);
   }
 
   if (!post) notFound();
+  if (post.status !== "PUBLISHED") notFound();
 
   // ─── Visibility 규칙 ───────────────────────────────────────────────
-  // PUBLIC : 누구나 접근 가능
-  // UNLISTED: 링크로만 접근 가능 (목록 제외, 직접 URL은 허용)
-  // PRIVATE : 로그인 가족만 접근 가능
   if (post.visibility === "PRIVATE") {
     const session = await auth();
     if (!session) redirect(`/login?callbackUrl=/blog/${slug}`);
@@ -88,6 +88,7 @@ export default async function PostPage({ params }: Props) {
       {/* 커버 이미지 */}
       {post.coverUrl && (
         <div className="w-full h-56 sm:h-72 rounded-2xl overflow-hidden bg-bg-secondary mb-8">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={post.coverUrl}
             alt={post.title}

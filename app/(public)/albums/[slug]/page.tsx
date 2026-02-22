@@ -96,8 +96,8 @@ export default async function AlbumPage({ params }: Props) {
         tags: { select: { id: true, name: true } },
       },
     });
-  } catch {
-    // DB 미연결
+  } catch (e) {
+    console.error("[AlbumPage] DB error:", e);
   }
 
   if (!album) notFound();
