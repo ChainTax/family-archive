@@ -2,7 +2,7 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import { Badge } from "@/components/ui";
-import { Visibility } from "@prisma/client";
+type Visibility = "PUBLIC" | "UNLISTED" | "PRIVATE";
 
 export const metadata = { title: "앨범" };
 

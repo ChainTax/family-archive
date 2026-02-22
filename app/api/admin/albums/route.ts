@@ -1,7 +1,7 @@
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { createAuditLog } from "@/lib/audit";
-import { Visibility } from "@prisma/client";
+type Visibility = "PUBLIC" | "UNLISTED" | "PRIVATE";
 
 // ─── GET /api/admin/albums ────────────────────────────────────
 export async function GET() {

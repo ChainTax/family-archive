@@ -1,7 +1,8 @@
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import { Badge } from "@/components/ui";
-import { PostStatus, Visibility } from "@prisma/client";
+type Visibility = "PUBLIC" | "UNLISTED" | "PRIVATE";
+type PostStatus = "DRAFT" | "SCHEDULED" | "PUBLISHED";
 
 export const metadata = { title: "글" };
 

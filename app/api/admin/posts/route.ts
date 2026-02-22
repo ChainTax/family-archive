@@ -1,7 +1,8 @@
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { createAuditLog } from "@/lib/audit";
-import { Visibility, PostStatus } from "@prisma/client";
+type Visibility = "PUBLIC" | "UNLISTED" | "PRIVATE";
+type PostStatus = "DRAFT" | "SCHEDULED" | "PUBLISHED";
 
 // ─── GET /api/admin/posts ─────────────────────────────────────
 export async function GET() {
