@@ -83,7 +83,7 @@ export default async function AuditLogPage({
               </tr>
             </thead>
             <tbody className="divide-y divide-border-default">
-              {logs.map((log) => (
+              {logs.map((log: (typeof logs)[number]) => (
                 <tr key={log.id} className="hover:bg-bg-secondary/50">
                   <td className="px-4 py-3 text-text-tertiary whitespace-nowrap">
                     {new Date(log.createdAt).toLocaleString("ko-KR", {
