@@ -123,3 +123,6 @@ body, header, nav, footer, main, aside, article, section, div, button, input, te
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--color-border-strong); border-radius: 99px; }
+
+/* ─── Lightbox thumbnail strip — hide scrollbar ─── */
+.lb-thumb-strip::-webkit-scrollbar { display: none; }
