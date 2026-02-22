@@ -175,7 +175,7 @@ ssl: connectionString.includes("localhost") ? undefined : { rejectUnauthorized: 
 - **Step 11**: RSS·Sitemap·OG + 성능 폴리싱 — `/rss.xml`(RSS 2.0·PUBLIC only), `/sitemap.xml`(PUBLIC 포스트·앨범), `/robots.txt`, Root layout metadataBase+OG+Twitter, 커스텀 404, 보안 headers, `/api/files/*` 캐시 1년, 공개 목록 ISR(60s/300s)
 - **Step 12**: Vercel 배포 + 배포 후 수정 (아래 상세 참고)
 - **Step 13**: UI 폴리싱 + 마일스톤 공개 페이지 (아래 상세 참고)
-- **Step 14**: 성장기록 기능 (아래 상세 참고)
+- **Step 14**: 성장기록 기능 + 로고 추가 (아래 상세 참고)
 
 ### Step 12 상세 — 배포 및 배포 후 수정
 
@@ -278,21 +278,26 @@ ssl: connectionString.includes("localhost") ? undefined : { rejectUnauthorized: 
 - 자연 3차 스플라인(Natural Cubic Spline) 보간 알고리즘 직접 구현
 - 3일 간격 밀집 포인트 사전 생성 → Recharts `type="linear"` 라인으로 부드러운 곡선 표현
 - 키/몸무게 탭 전환 시 `key={animKey}` re-mount로 차트 재애니메이션
-- 실측값 점만 `ActualDot` 컴포넌트로 강조 표시
+- 실측값 점만 `ActualDot` 컴포넌트로 강조 표시 (dot 콜백: `Record<string, unknown>` 타입)
 - 커스텀 툴팁: 날짜·값·실측 여부 표시
-- 라벨 있는 측정점에 `ReferenceLine` 표시
 - 색상: 키 `#CC7A4A` (brand), 몸무게 `#7A8ECC`
+- ReferenceLine 제거 (텍스트가 Y축 숫자에 가려지는 문제 → 완전 삭제)
 
 **공개 성장기록 페이지 (`app/(public)/growth/page.tsx`)**
 - 최근 키·몸무게 카드 (상단)
 - 인터랙티브 곡선 차트
-- 측정 기록 목록 (최신순)
 - 비로그인 + PUBLIC 기록 없음 → 로그인 리다이렉트
+- 측정기록 목록 표 없음 (차트만 표시)
 
 **내비게이션 추가**
 - 공개 nav: "성장" 링크 (`/growth`)
 - 관리자 사이드바: "성장기록" 링크 (`/admin/growth`)
 - `lib/audit.ts`: `AuditEntityType`에 `GrowthRecord` 추가
+
+**사이트 로고 (`public/logo.png`)**
+- 새싹 아이콘 PNG (투명 배경)
+- 공개 헤더 "재린월드" 왼쪽에 `w-7 h-7` 크기로 표시 (`app/(public)/layout.tsx`)
+- 관리자 사이드바 "재린월드" 왼쪽에 `w-5 h-5` 크기로 표시 (`app/admin/layout.tsx`)
 
 ---
 
@@ -316,6 +321,7 @@ auth.config.ts                      Edge-safe 공통 설정 (JWT callbacks, page
 auth.ts                             NextAuth v5 풀 설정 (Credentials + Prisma + bcrypt)
 middleware.ts                       라우트 가드 (auth.config.ts만 import → Edge-safe)
 
+public/logo.png                     사이트 로고 (새싹 아이콘, 투명 배경 PNG)
 app/globals.css                     CSS 변수 + Noto Sans KR import
 app/layout.tsx                      루트 레이아웃 + SessionProvider
 app/page.tsx                        홈페이지 (최근 글·앨범·마일스톤, ISR 300s)
@@ -329,7 +335,7 @@ app/(public)/blog/[slug]/page.tsx   기록 상세 (force-dynamic, findFirst, 커
 app/(public)/albums/page.tsx        앨범 목록 (max-w-6xl, createdAt 날짜 표시)
 app/(public)/albums/[slug]/page.tsx 앨범 상세 (force-dynamic, max-w-6xl)
 app/(public)/milestones/page.tsx    마일스톤 공개 목록 (ISR 60s, PUBLIC, 유형별 색상 배지)
-app/(public)/growth/page.tsx        성장기록 공개 페이지 (force-dynamic, 최근값 카드+차트+목록)
+app/(public)/growth/page.tsx        성장기록 공개 페이지 (force-dynamic, 최근값 카드+차트)
 app/(public)/map/page.tsx           발자취 공개 지도 (메뉴에서 제거, URL 직접 접근 가능)
 app/(public)/search/page.tsx        검색 (모바일 가로 레이아웃 보장)
 app/(public)/tags/[name]/page.tsx   태그별 목록
