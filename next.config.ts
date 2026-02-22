@@ -1,8 +1,16 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // sharp, bcryptjs 등 네이티브 모듈은 번들에 포함하지 않고 node_modules에서 직접 로드
-  serverExternalPackages: ["sharp", "bcryptjs"],
+  // Vercel 250MB 제한 대응:
+  // @prisma/client, prisma 를 외부 패키지로 처리 → 람다 번들에서 제외
+  // (엔진 바이너리 ~50-100MB가 번들에 포함되는 문제 해결)
+  serverExternalPackages: [
+    "@prisma/client",
+    "prisma",
+    "@prisma/adapter-pg",
+    "sharp",
+    "bcryptjs",
+  ],
 
   images: {
     formats: ["image/avif", "image/webp"],
@@ -11,20 +19,18 @@ const nextConfig: NextConfig = {
     unoptimized: process.env.STORAGE_PROVIDER === "local",
   },
 
-  // Vercel 250MB 제한 대응: 불필요한 Prisma 플랫폼 바이너리 및 빌드 툴 제외
+  // 추가 안전망: 모든 플랫폼 Prisma 엔진 바이너리 + 빌드 툴 추적 제외
   outputFileTracingExcludes: {
     "*": [
-      "node_modules/.prisma/client/libquery_engine-darwin*",
-      "node_modules/.prisma/client/libquery_engine-windows*",
-      "node_modules/.prisma/client/libquery_engine-debian*",
-      "node_modules/prisma/libquery_engine-darwin*",
-      "node_modules/prisma/libquery_engine-windows*",
-      "node_modules/prisma/libquery_engine-debian*",
+      "node_modules/.prisma/client/libquery_engine*",
+      "node_modules/@prisma/engines/**",
+      "node_modules/prisma/libquery_engine*",
+      "node_modules/sharp/**",
       "node_modules/@swc/core*",
-      "node_modules/esbuild*",
-      "node_modules/webpack*",
-      "node_modules/rollup*",
-      "node_modules/terser*",
+      "node_modules/esbuild/**",
+      "node_modules/webpack/**",
+      "node_modules/rollup/**",
+      "node_modules/terser/**",
     ],
   },
 
