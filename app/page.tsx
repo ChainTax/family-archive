@@ -43,7 +43,7 @@ export default async function HomePage() {
       prisma.post.findMany({
         where: { status: "PUBLISHED", visibility: "PUBLIC" },
         orderBy: { publishedAt: "desc" },
-        take: 3,
+        take: 4,
         select: { id: true, title: true, slug: true, excerpt: true, coverUrl: true, publishedAt: true },
       }),
       prisma.album.findMany({
@@ -107,39 +107,36 @@ export default async function HomePage() {
                 전체 보기
               </Link>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {recentPosts.map((post) => (
                 <Link
                   key={post.id}
                   href={`/blog/${post.slug}`}
-                  className="group block bg-bg-secondary rounded-2xl overflow-hidden border border-border-default hover:shadow-md transition-shadow"
+                  className="group block rounded-2xl overflow-hidden border border-border-default hover:shadow-md transition-shadow"
                 >
-                  {post.coverUrl ? (
-                    <div className="h-44 bg-bg-secondary overflow-hidden">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <div className="aspect-square bg-bg-secondary overflow-hidden">
+                    {post.coverUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
                       <img
                         src={post.coverUrl}
                         alt={post.title}
-                        className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-300"
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                       />
-                    </div>
-                  ) : (
-                    <div className="h-44 bg-border-default flex items-center justify-center">
-                      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-text-tertiary">
-                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                        <polyline points="14 2 14 8 20 8" />
-                      </svg>
-                    </div>
-                  )}
-                  <div className="p-4">
-                    <h3 className="font-semibold text-text-primary group-hover:text-brand transition-colors line-clamp-2">
-                      {post.title}
-                    </h3>
-                    {post.excerpt && (
-                      <p className="text-sm text-text-secondary mt-1 line-clamp-2">{post.excerpt}</p>
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-text-tertiary">
+                          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                          <polyline points="14 2 14 8 20 8" />
+                        </svg>
+                      </div>
                     )}
+                  </div>
+                  <div className="p-3 bg-bg-secondary">
+                    <p className="text-sm font-semibold text-text-primary truncate group-hover:text-brand transition-colors">
+                      {post.title}
+                    </p>
                     {post.publishedAt && (
-                      <p className="text-xs text-text-tertiary mt-3">
+                      <p className="text-xs text-text-tertiary mt-0.5">
                         {new Date(post.publishedAt).toLocaleDateString("ko-KR", {
                           year: "numeric", month: "long", day: "numeric",
                         })}

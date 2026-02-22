@@ -63,9 +63,10 @@ export default async function BlogPage() {
           {posts.map((post) => (
             <article key={post.id} className="group py-6 first:pt-0">
               {/* 카드 링크 (커버 + 제목 + 발췌) */}
-              <Link href={`/blog/${post.slug}`} className="flex gap-5 items-start">
+              <Link href={`/blog/${post.slug}`} className="flex flex-col sm:flex-row gap-3 sm:gap-5 items-start">
                 {post.coverUrl && (
-                  <div className="hidden sm:block flex-shrink-0 w-32 h-24 rounded-xl overflow-hidden bg-bg-secondary">
+                  <div className="w-full sm:w-32 sm:flex-shrink-0 h-48 sm:h-24 rounded-xl overflow-hidden bg-bg-secondary">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={post.coverUrl}
                       alt={post.title}
