@@ -1,6 +1,7 @@
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { createAuditLog } from "@/lib/audit";
+import { revalidatePath } from "next/cache";
 type Visibility = "PUBLIC" | "UNLISTED" | "PRIVATE";
 type PostStatus = "DRAFT" | "SCHEDULED" | "PUBLISHED";
 
@@ -95,6 +96,13 @@ export async function PATCH(req: Request, { params }: Ctx) {
     entityId: post.id,
   });
 
+  // 이전 또는 현재 상태가 PUBLISHED면 홈·블로그 목록 즉시 갱신
+  if (status === "PUBLISHED" || prevPost?.status === "PUBLISHED") {
+    revalidatePath("/");
+    revalidatePath("/blog");
+    revalidatePath(`/blog/${post.slug}`);
+  }
+
   return Response.json({ id: post.id, slug: post.slug });
 }
 
@@ -105,6 +113,7 @@ export async function DELETE(_req: Request, { params }: Ctx) {
   if (session.user.role !== "OWNER") return Response.json({ error: "Forbidden" }, { status: 403 });
 
   const { id } = await params;
+  const deletedPost = await prisma.post.findUnique({ where: { id }, select: { status: true, slug: true } });
   await prisma.post.delete({ where: { id } });
 
   await createAuditLog({
@@ -113,6 +122,11 @@ export async function DELETE(_req: Request, { params }: Ctx) {
     entityType: "Post",
     entityId: id,
   });
+
+  if (deletedPost?.status === "PUBLISHED") {
+    revalidatePath("/");
+    revalidatePath("/blog");
+  }
 
   return Response.json({ success: true });
 }

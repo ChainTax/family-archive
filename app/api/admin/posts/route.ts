@@ -1,6 +1,7 @@
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { createAuditLog } from "@/lib/audit";
+import { revalidatePath } from "next/cache";
 type Visibility = "PUBLIC" | "UNLISTED" | "PRIVATE";
 type PostStatus = "DRAFT" | "SCHEDULED" | "PUBLISHED";
 
@@ -85,6 +86,11 @@ export async function POST(req: Request) {
     entityType: "Post",
     entityId: post.id,
   });
+
+  if (status === "PUBLISHED") {
+    revalidatePath("/");
+    revalidatePath("/blog");
+  }
 
   return Response.json({ id: post.id, slug: post.slug }, { status: 201 });
 }
