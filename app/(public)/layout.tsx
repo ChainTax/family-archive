@@ -38,6 +38,12 @@ export default async function PublicLayout({
             >
               마일스톤
             </Link>
+            <Link
+              href="/growth"
+              className="text-sm sm:text-base text-text-secondary hover:text-text-primary transition-colors"
+            >
+              성장
+            </Link>
             {/* 검색 아이콘 */}
             <Link
               href="/search"

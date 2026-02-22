@@ -34,6 +34,7 @@ export default async function AdminLayout({
               <NavItem href="/admin/posts" label="글" />
               <NavItem href="/admin/albums" label="앨범" />
               <NavItem href="/admin/milestones" label="마일스톤" />
+              <NavItem href="/admin/growth" label="성장기록" />
               <NavItem href="/admin/map" label="지도 핀" />
             </>
           )}

@@ -17,7 +17,8 @@ export type AuditEntityType =
   | "Photo"
   | "Place"
   | "Milestone"
-  | "GuestbookEntry";
+  | "GuestbookEntry"
+  | "GrowthRecord";
 
 interface CreateAuditLogArgs {
   actorId: string;

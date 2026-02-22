@@ -174,6 +174,7 @@ ssl: connectionString.includes("localhost") ? undefined : { rejectUnauthorized: 
 - **Step 10**: Milestones + Guestbook + Moderation + Audit Log UI — `GuestbookEntry` 스키마 추가, `/admin/milestones`(CRUD 모달), `/admin/guestbook`(승인·삭제), `/guestbook`(공개 폼+목록), `/admin/audit`(OWNER only 페이지네이션), Dashboard 실통계
 - **Step 11**: RSS·Sitemap·OG + 성능 폴리싱 — `/rss.xml`(RSS 2.0·PUBLIC only), `/sitemap.xml`(PUBLIC 포스트·앨범), `/robots.txt`, Root layout metadataBase+OG+Twitter, 커스텀 404, 보안 headers, `/api/files/*` 캐시 1년, 공개 목록 ISR(60s/300s)
 - **Step 12**: Vercel 배포 + 배포 후 수정 (아래 상세 참고)
+- **Step 13**: UI 폴리싱 + 마일스톤 공개 페이지 (아래 상세 참고)
 
 ### Step 12 상세 — 배포 및 배포 후 수정
 
@@ -192,16 +193,17 @@ ssl: connectionString.includes("localhost") ? undefined : { rejectUnauthorized: 
 - 사이트명, 로그인 페이지, 헤더/푸터, 메타데이터 전부 `재린월드`로 변경
 
 **홈페이지 개편 (`app/page.tsx`)**
-- 최근 게시글 3개 (PUBLIC + PUBLISHED, 3열 그리드)
-- 최근 앨범 4개 (PUBLIC, 4열 그리드)
+- 섹션명: "기록" / "앨범" / "마일스톤"
+- 최근 게시글 3개 (PUBLIC + PUBLISHED, 3열 그리드) — 커버 `object-contain` (잘림 방지)
+- 최근 앨범 4개 (PUBLIC, 4열 그리드) — 업로드 날짜(`createdAt`) 표시
 - 최근 마일스톤 4개 (PUBLIC, 리스트)
 - `revalidate = 300` (ISR 5분)
 
 **공개 레이아웃 개편 (`app/(public)/layout.tsx`)**
-- 메뉴: 기록(블로그), 앨범, 발자취(지도), 검색 아이콘 — 방명록·아카이브 제거
+- 메뉴: 기록(블로그), 앨범, 마일스톤, 검색 아이콘 — 발자취·방명록·아카이브 제거
 - 비로그인 상태: 로그인 탭 제거 (홈화면에서 로그인 가능)
 - 로그인 상태: 관리자 링크만 표시
-- `max-w-6xl`, `h-16`, `gap-6`, `text-base` 네비게이션
+- `max-w-6xl`, `h-16`, 데스크탑 `gap-6/text-base` · 모바일 `gap-3/text-sm` 네비게이션
 
 **디자인 시스템 변경**
 - 색상: Toss 블루 → Warm 팔레트 (`#CC7A4A`, `#FAFAF8`, `#F2F0E8` 등)
@@ -220,6 +222,37 @@ ssl: connectionString.includes("localhost") ? undefined : { rejectUnauthorized: 
 - `blog/[slug]`, `albums/[slug]`: `export const dynamic = "force-dynamic"` 추가
 - DB 에러 rethrow (조용한 404 대신 500으로 실제 오류 노출)
 - `notFound()` 전 `console.warn` 추가 (Vercel 로그 디버깅)
+
+### Step 13 상세 — UI 폴리싱 + 마일스톤 공개 페이지
+
+**내비게이션 개편 (`app/(public)/layout.tsx`)**
+- 발자취 메뉴 제거, 마일스톤(`/milestones`) 메뉴 추가
+- 모바일 반응형: `gap-3 sm:gap-6`, `text-sm sm:text-base` (작은 화면 오버플로우 방지)
+
+**홈페이지 수정 (`app/page.tsx`)**
+- 섹션명 "최근 기록" → "기록"
+- 블로그 카드 커버 이미지: `object-cover` → `object-contain` + `bg-bg-secondary` (잘림 방지)
+- 앨범 카드: `createdAt` 조회 추가 및 날짜 표시
+
+**앨범 목록 수정 (`app/(public)/albums/page.tsx`)**
+- `max-w-5xl` → `max-w-6xl` (헤더 로고와 좌측 정렬 통일)
+- `createdAt` 날짜 표시 추가 (업로드 날짜)
+- 메타데이터 "FamilyArchive" → "재린월드"
+
+**앨범 상세 수정 (`app/(public)/albums/[slug]/page.tsx`)**
+- `max-w-5xl` → `max-w-6xl` (정렬 통일)
+
+**블로그 상세 수정 (`app/(public)/blog/[slug]/page.tsx`)**
+- 커버 이미지: `object-cover` → `object-contain` (잘림 방지)
+
+**검색 페이지 수정 (`app/(public)/search/page.tsx`)**
+- 메타데이터 "FamilyArchive" → "재린월드"
+- 검색 폼 `flex-row` 명시 + 버튼 `shrink-0` (모바일 가로 정렬 보장)
+
+**마일스톤 공개 페이지 신규 생성 (`app/(public)/milestones/page.tsx`)**
+- PUBLIC 마일스톤 목록 (날짜 내림차순)
+- 유형별 색상 배지 (BIRTHDAY=핑크, ANNIVERSARY=퍼플, GROWTH=그린, FIRST_EXPERIENCE=블루, OTHER=브랜드)
+- `revalidate = 60` (ISR 1분)
 
 ---
 
@@ -250,13 +283,14 @@ app/not-found.tsx                   커스텀 404 페이지
 app/(auth)/login/page.tsx           로그인 페이지 (재린월드)
 app/admin/layout.tsx                Admin 사이드바 레이아웃 (역할별)
 app/admin/page.tsx                  대시보드 (실통계: 글·앨범·사진·방명록·마일스톤)
-app/(public)/layout.tsx             Public 헤더·푸터 (기록·앨범·발자취·검색)
+app/(public)/layout.tsx             Public 헤더·푸터 (기록·앨범·마일스톤·검색, 모바일 반응형)
 app/(public)/blog/page.tsx          기록 목록 (ISR 60s, PUBLIC+PUBLISHED)
-app/(public)/blog/[slug]/page.tsx   기록 상세 (force-dynamic, findFirst)
-app/(public)/albums/page.tsx        앨범 목록 (ISR 60s, PUBLIC)
-app/(public)/albums/[slug]/page.tsx 앨범 상세 (force-dynamic)
-app/(public)/map/page.tsx           발자취 공개 지도
-app/(public)/search/page.tsx        검색
+app/(public)/blog/[slug]/page.tsx   기록 상세 (force-dynamic, findFirst, 커버 object-contain)
+app/(public)/albums/page.tsx        앨범 목록 (max-w-6xl, createdAt 날짜 표시)
+app/(public)/albums/[slug]/page.tsx 앨범 상세 (force-dynamic, max-w-6xl)
+app/(public)/milestones/page.tsx    마일스톤 공개 목록 (ISR 60s, PUBLIC, 유형별 색상 배지)
+app/(public)/map/page.tsx           발자취 공개 지도 (메뉴에서 제거, URL 직접 접근 가능)
+app/(public)/search/page.tsx        검색 (모바일 가로 레이아웃 보장)
 app/(public)/tags/[name]/page.tsx   태그별 목록
 app/(public)/series/[name]/page.tsx 시리즈별 목록
 app/(public)/guestbook/page.tsx     방명록 (공개 폼+승인된 목록)

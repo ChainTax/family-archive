@@ -208,3 +208,20 @@ model AuditLog {
   @@index([entityType, entityId])
   @@index([createdAt])
 }
+
+// ─── GrowthRecord ─────────────────────────────────────────────
+
+model GrowthRecord {
+  id         String     @id @default(cuid())
+  date       DateTime
+  height     Float?
+  weight     Float?
+  label      String?
+  visibility Visibility @default(PRIVATE)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([date])
+  @@index([visibility])
+}
