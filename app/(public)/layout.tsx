@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { auth } from "@/auth";
+import { ThemeToggle } from "@/components/ui";
 
 export default async function PublicLayout({
   children,
@@ -45,6 +46,7 @@ export default async function PublicLayout({
             >
               성장
             </Link>
+            <ThemeToggle />
             {/* 검색 아이콘 */}
             <Link
               href="/search"

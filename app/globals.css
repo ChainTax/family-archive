@@ -6,22 +6,27 @@
 
 /* ─── Design Tokens ─── */
 :root {
-  /* Brand — Claude 테라코타 오렌지 */
-  --color-brand: #CC7A4A;
-  --color-brand-hover: #B5622E;
-
-  /* Background — 따뜻한 크림 */
-  --color-bg-primary: #FAFAF8;
-  --color-bg-secondary: #F2F0E8;
-
-  /* Text — 따뜻한 다크 */
-  --color-text-primary: #1C1B18;
+  /* ── 라이트 모드 ── */
+  --color-brand:          #CC7A4A;
+  --color-brand-hover:    #B5622E;
+  --color-bg-primary:     #FAFAF8;
+  --color-bg-secondary:   #F2F0E8;
+  --color-text-primary:   #1C1B18;
   --color-text-secondary: #5C5850;
-  --color-text-tertiary: #9C9890;
-
-  /* Border — 따뜻한 베이지 */
+  --color-text-tertiary:  #9C9890;
   --color-border-default: #E5E0D8;
-  --color-border-strong: #CFC9BF;
+  --color-border-strong:  #CFC9BF;
+
+  /* RGB 채널 (Tailwind opacity 수식어용) */
+  --color-brand-rgb:           204 122 74;
+  --color-brand-hover-rgb:     181 98 46;
+  --color-bg-primary-rgb:      250 250 248;
+  --color-bg-secondary-rgb:    242 240 232;
+  --color-text-primary-rgb:    28 27 24;
+  --color-text-secondary-rgb:  92 88 80;
+  --color-text-tertiary-rgb:   156 152 144;
+  --color-border-default-rgb:  229 224 216;
+  --color-border-strong-rgb:   207 201 191;
 
   /* Radius */
   --radius-sm: 6px;
@@ -33,6 +38,34 @@
   --shadow-sm: 0 1px 4px 0 rgba(0, 0, 0, 0.06);
   --shadow-md: 0 4px 16px 0 rgba(0, 0, 0, 0.08);
   --shadow-lg: 0 8px 32px 0 rgba(0, 0, 0, 0.12);
+}
+
+/* ─── 다크 모드 (Claude 다크 팔레트 참고 — 따뜻한 다크) ─── */
+[data-theme="dark"] {
+  --color-brand:          #CC7A4A;
+  --color-brand-hover:    #D98B5A;
+  --color-bg-primary:     #1C1A17;
+  --color-bg-secondary:   #252320;
+  --color-text-primary:   #EDE9E3;
+  --color-text-secondary: #9C9890;
+  --color-text-tertiary:  #6B6760;
+  --color-border-default: #38352F;
+  --color-border-strong:  #4D4940;
+
+  --color-brand-rgb:           204 122 74;
+  --color-brand-hover-rgb:     217 139 90;
+  --color-bg-primary-rgb:      28 26 23;
+  --color-bg-secondary-rgb:    37 35 32;
+  --color-text-primary-rgb:    237 233 227;
+  --color-text-secondary-rgb:  156 152 144;
+  --color-text-tertiary-rgb:   107 103 96;
+  --color-border-default-rgb:  56 53 47;
+  --color-border-strong-rgb:   77 73 64;
+
+  --shadow-sm: 0 1px 4px 0 rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 16px 0 rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
+  color-scheme: dark;
 }
 
 /* ─── Base ─── */
@@ -67,6 +100,24 @@ body {
 .prose-editor a  { color: var(--color-brand); text-decoration: underline; }
 .prose-editor p.is-editor-empty:first-child::before { content: attr(data-placeholder); color: var(--color-text-tertiary); pointer-events: none; float: left; height: 0; }
 .prose-editor img { max-width: 100%; height: auto; display: block; margin: 1rem auto; border-radius: 8px; }
+
+/* ─── 다크 모드: bg-white 일괄 다크 처리 ─── */
+[data-theme="dark"] .bg-white {
+  background-color: rgb(var(--color-bg-secondary-rgb)) !important;
+}
+[data-theme="dark"] .prose-editor {
+  color: var(--color-text-primary);
+}
+
+/* ─── 테마 전환 부드러운 트랜지션 ─── */
+body, header, nav, footer, main, aside, article, section, div, button, input, textarea, select {
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.15s ease;
+}
+/* 애니메이션과 충돌 방지 */
+.transition-transform, [class*="animate-"], [class*="duration-"] {
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.15s ease,
+              transform var(--tw-transition-duration, 300ms) var(--tw-transition-timing-function, ease);
+}
 
 /* ─── Scrollbar (subtle) ─── */
 ::-webkit-scrollbar { width: 6px; height: 6px; }

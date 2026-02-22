@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
+import { ThemeToggle } from "@/components/ui";
 
 export const revalidate = 300;
 
@@ -67,6 +68,11 @@ export default async function HomePage() {
 
   return (
     <div className="min-h-screen flex flex-col bg-bg-primary">
+      {/* 테마 토글 — 우상단 고정 */}
+      <div className="fixed top-4 right-4 z-50">
+        <ThemeToggle />
+      </div>
+
       {/* ─── Hero ─── */}
       <section className="py-28 px-4 text-center border-b border-border-default">
         <div className="flex items-center justify-center gap-3 mb-4">
